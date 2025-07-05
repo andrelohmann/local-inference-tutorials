@@ -2,6 +2,13 @@
 
 * https://github.com/ggml-org/llama.cpp/blob/master/docs/docker.md
 
+## Docker (Pascal)
+
+```
+docker build -t llama-cpp-pascal .
+
+```
+
 
 For the P4000/5000 Models, an older Cuda Version and an older driver is required. Also therefor these instances require a Unbuntu 22.04.
 
