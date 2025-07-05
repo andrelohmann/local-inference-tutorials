@@ -13,13 +13,13 @@ docker run -d --gpus=all -v ollama:/root/.ollama -p 11434:11434 --name ollama ol
 ### Load a model
 
 ```
-docker exec -it ollama ollama load mistral:7b-instruct-q8_0
+docker exec -it ollama ollama pull mistral:7b-instruct-q8_0
 ```
 
 ### Infere the model
 
 ```
-ocker exec -it ollama ollama run --verbose mistral:7b-instruct-q8_0
+docker exec -it ollama ollama run --verbose mistral:7b-instruct-q8_0
 ```
 
 ### Test the inference via API
