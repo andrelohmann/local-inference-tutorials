@@ -25,7 +25,7 @@ docker exec -it ollama ollama run --verbose mistral:7b-instruct-q8_0
 ### Test the inference via API
 
 ```
-curl http://api3.ai.ki.cc.lan:11434/api/generate -d '{
+curl http://localhost:11434/api/generate -d '{
   "model": "mistral:7b-instruct-q8_0",
   "prompt": "Why is the sky blue?"
 }'
