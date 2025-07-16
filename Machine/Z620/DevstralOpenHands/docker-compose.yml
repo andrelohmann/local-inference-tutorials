@@ -39,11 +39,11 @@ services:
       start_period: ${HEALTHCHECK_START_PERIOD:-60s}  # Start checking after 1 minute
 
   openhands:
-    image: docker.all-hands.dev/all-hands-ai/openhands:0.48
+    image: docker.all-hands.dev/all-hands-ai/openhands:${OPENHANDS_VERSION}
     container_name: openhands
     restart: unless-stopped
     environment:
-      - SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.48-nikolaik
+      - SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:${OPENHANDS_RUNTIME_VERSION}
       - LOG_ALL_EVENTS=true
       - RUNTIME=docker
       - LLM_MODEL=devstral

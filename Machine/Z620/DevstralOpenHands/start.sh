@@ -22,8 +22,10 @@ echo "📋 Configuration Summary:"
 echo "  • CUDA Architecture: ${CUDA_DOCKER_ARCH}"
 echo "  • Model: ${MODEL_NAME}"
 echo "  • llama.cpp Port: ${LLAMA_ARG_PORT}"
+echo "  • OpenHands Version: ${OPENHANDS_VERSION}"
 echo "  • OpenHands Port: ${OPENHANDS_PORT}"
 echo "  • Context Window: ${LLAMA_ARG_CTX_SIZE} tokens"
+echo "  • GPU Layers: ${LLAMA_ARG_N_GPU_LAYERS}"
 echo "  • Parallel Streams: ${LLAMA_ARG_PARALLEL}"
 echo ""
 
@@ -79,7 +81,7 @@ fi
 # Pull runtime container (required for OpenHands)
 echo ""
 echo "📦 Pulling OpenHands runtime container..."
-docker pull docker.all-hands.dev/all-hands-ai/runtime:0.48-nikolaik
+docker pull docker.all-hands.dev/all-hands-ai/runtime:${OPENHANDS_RUNTIME_VERSION}
 
 echo ""
 echo "🔧 Building and starting containers..."
