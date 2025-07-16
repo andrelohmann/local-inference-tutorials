@@ -1,0 +1,59 @@
+# Docker and build files
+.docker/
+docker-compose.override.yml
+.env.local
+
+# Models directory (large files)
+models/*.gguf
+models/*.bin
+models/*.safetensors
+models/*.pt
+models/*.pth
+models/*.tmp
+models/*.placeholder
+
+# Workspace directory (user content)
+workspace/*
+!workspace/.gitkeep
+
+# Logs
+*.log
+logs/
+openhands-logs/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Docker volumes
+.volumes/
+
+# Backup files
+*.bak
+*.backup
+models-backup.tar.gz

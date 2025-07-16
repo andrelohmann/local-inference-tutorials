@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  llama-cpp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server
+      args:
+        CUDA_DOCKER_ARCH: 61  # Pascal architecture
+    container_name: llama-cpp-devstral
+    restart: unless-stopped
+    environment:
+      - LLAMA_ARG_HOST=0.0.0.0
+      - LLAMA_ARG_PORT=11434
+      - LLAMA_ARG_MODEL=/models/devstral-q4_k_m.gguf
+      - LLAMA_ARG_CTX_SIZE=4096
+      - LLAMA_ARG_N_GPU_LAYERS=35
+      - LLAMA_ARG_THREADS=6
+      - LLAMA_ARG_BATCH_SIZE=512
+      - LLAMA_ARG_UBATCH_SIZE=512
+      - LLAMA_ARG_FLASH_ATTN=1
+      - LLAMA_ARG_CONT_BATCHING=1
+      - LLAMA_ARG_PARALLEL=4
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - MODEL_URL=https://huggingface.co/mistralai/Devstral-Small-2507_gguf/resolve/main/Devstral-Small-2507-Q4_K_M.gguf
+      - MODEL_FILE=devstral-q4_k_m.gguf
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./models:/models
+    networks:
+      - devstral-network
+    runtime: nvidia
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  openhands:
+    image: docker.all-hands.dev/all-hands-ai/openhands:0.48
+    container_name: openhands
+    restart: unless-stopped
+    environment:
+      - SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.48-nikolaik
+      - LOG_ALL_EVENTS=true
+      - SANDBOX_TYPE=local
+      - LLM_MODEL=devstral
+      - LLM_BASE_URL=http://llama-cpp-server:11434
+      - LLM_API_KEY=dummy
+      - WORKSPACE_BASE=/workspace
+      - WORKSPACE_MOUNT_PATH=/workspace
+      - LLM_EMBEDDING_MODEL=local
+      - LLM_EMBEDDING_BASE_URL=http://llama-cpp-server:11434
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./workspace:/workspace
+      - ./openhands-logs:/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ~/.openhands:/.openhands
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      llama-cpp-server:
+        condition: service_healthy
+    networks:
+      - devstral-network
+
+networks:
+  devstral-network:
+    driver: bridge

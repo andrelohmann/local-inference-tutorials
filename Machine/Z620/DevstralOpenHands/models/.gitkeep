@@ -1,0 +1,9 @@
+# Models Directory
+
+This directory stores the AI models used by llama.cpp server.
+Models are automatically downloaded on first startup.
+
+The actual model files are excluded from git tracking via .gitignore
+but this directory structure is preserved with this .gitkeep file.
+
+Current model: devstral-q4_k_m.gguf (downloaded automatically)

@@ -1,0 +1,6 @@
+# Workspace Directory
+
+This directory is used by OpenHands for project files and code generation.
+It will be automatically populated when you use OpenHands.
+
+Files in this directory will persist between container restarts.
