@@ -131,6 +131,9 @@ SERVER_ARGS=()\n\
 # Model path (required)\n\
 SERVER_ARGS+=("--model" "$MODEL_PATH")\n\
 \n\
+# Model alias for a friendly name\n\
+SERVER_ARGS+=("--alias" "${MODEL_ALIAS:-devstral-2507}")\n\
+\n\
 # Network settings\n\
 SERVER_ARGS+=("--host" "${LLAMA_ARG_HOST:-0.0.0.0}")\n\
 SERVER_ARGS+=("--port" "${LLAMA_ARG_PORT:-11434}")\n\

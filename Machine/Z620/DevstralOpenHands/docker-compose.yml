@@ -24,6 +24,7 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES}
       - MODEL_URL=${MODEL_URL}
       - MODEL_FILE=${MODEL_NAME}
+      - MODEL_ALIAS=${MODEL_ALIAS}
     ports:
       - "${LLAMA_ARG_PORT}:${LLAMA_ARG_PORT}"
     volumes:
@@ -48,7 +49,7 @@ services:
       - SANDBOX_VOLUMES=${SANDBOX_VOLUMES}
       - LOG_ALL_EVENTS=${OPENHANDS_LOG_ALL_EVENTS}
       #- RUNTIME=docker
-      - LLM_MODEL=openai/devstral-small-2507
+      - LLM_MODEL=openai/devstral-2507
       - LLM_BASE_URL=http://llama-cpp-server:11434
       - LLM_API_KEY=dummy
       #- LLM_MODEL=${OPENHANDS_LLM_MODEL}
@@ -86,7 +87,7 @@ services:
       - WEBUI_NAME=Devstral WebUI
       - WEBUI_URL=http://localhost:${OPENWEBUI_PORT}
       - ENABLE_SIGNUP=true
-      - DEFAULT_MODELS=devstral-small-2507
+      - DEFAULT_MODELS=${OPENWEBUI_DEFAULT_MODEL}
       - DEFAULT_USER_ROLE=admin
     ports:
       - "${OPENWEBUI_PORT}:8080"
