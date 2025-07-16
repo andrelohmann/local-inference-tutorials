@@ -34,7 +34,7 @@ docker pull docker.all-hands.dev/all-hands-ai/runtime:0.48-nikolaik
 echo "Building and starting services..."
 echo "The model will be downloaded automatically on first startup..."
 
-docker-compose up --build -d
+docker compose up --build -d
 
 echo ""
 echo "=== Startup Complete ==="
@@ -42,7 +42,7 @@ echo ""
 echo "Services starting up. Model download may take a few minutes on first run..."
 echo ""
 echo "Monitor model download progress:"
-echo "  docker-compose logs -f llama-cpp-server"
+echo "  docker compose logs -f llama-cpp-server"
 echo ""
 echo "Access points:"
 echo "- OpenHands Interface: http://localhost:3000"
@@ -50,10 +50,10 @@ echo "- llama.cpp Server API: http://localhost:11434"
 echo "- Health Check: http://localhost:11434/health"
 echo ""
 echo "To monitor all logs:"
-echo "  docker-compose logs -f"
+echo "  docker compose logs -f"
 echo ""
 echo "To stop services:"
-echo "  docker-compose down"
+echo "  docker compose down"
 echo ""
 
 # Wait for services to be ready
@@ -62,8 +62,8 @@ sleep 15
 
 # Check service health
 echo "Checking service status..."
-docker-compose ps
+docker compose ps
 
 echo ""
 echo "Setup complete! Monitor logs to see model download and startup progress."
-echo "Run 'docker-compose logs -f llama-cpp-server' to watch the model download."
+echo "Run 'docker compose logs -f llama-cpp-server' to watch the model download."

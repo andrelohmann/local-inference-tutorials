@@ -68,7 +68,7 @@ The setup consists of two main services:
 ./start.sh
 
 # Or manually:
-docker-compose up --build
+docker compose up --build
 
 # Access OpenHands interface
 http://localhost:3000

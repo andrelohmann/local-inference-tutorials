@@ -15,7 +15,7 @@
 
 3. **Monitor model download** (first run only):
    ```bash
-   docker-compose logs -f llama-cpp-server
+   docker compose logs -f llama-cpp-server
    ```
 
 ## Manual Steps
@@ -32,16 +32,16 @@ docker pull docker.all-hands.dev/all-hands-ai/openhands:0.48
 ### 2. Build and Start Services
 ```bash
 # Build containers and start services
-docker-compose up --build -d
+docker compose up --build -d
 
 # Monitor logs (including model download)
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ### 3. Verify Services
 ```bash
 # Check service status
-docker-compose ps
+docker compose ps
 
 # Test llama.cpp server
 curl http://localhost:11434/health
@@ -86,7 +86,7 @@ LLAMA_BATCH_SIZE=512         # Batch size
 ### Common Issues
 
 1. **Model not found or download failed**:
-   - Check container logs: `docker-compose logs -f llama-cpp-server`
+   - Check container logs: `docker compose logs -f llama-cpp-server`
    - Verify internet connectivity
    - Try manual download (see Model Management section)
    - Check available disk space
@@ -97,12 +97,12 @@ LLAMA_BATCH_SIZE=512         # Batch size
    - Install NVIDIA Container Toolkit
 
 3. **Service startup failure**:
-   - Check logs: `docker-compose logs service-name`
+   - Check logs: `docker compose logs service-name`
    - Verify resource availability (RAM, GPU memory)
    - Check if ports are available
 
 4. **OpenHands can't connect to llama.cpp**:
-   - Verify network connectivity: `docker-compose exec openhands ping llama-cpp-server`
+   - Verify network connectivity: `docker compose exec openhands ping llama-cpp-server`
    - Check llama.cpp health: `curl http://localhost:11434/health`
    - Review OpenHands configuration
 
@@ -110,18 +110,18 @@ LLAMA_BATCH_SIZE=512         # Batch size
 
 ```bash
 # Check service logs
-docker-compose logs -f llama-cpp-server
-docker-compose logs -f openhands
+docker compose logs -f llama-cpp-server
+docker compose logs -f openhands
 
 # Enter container for debugging
-docker-compose exec llama-cpp-server /bin/bash
-docker-compose exec openhands /bin/bash
+docker compose exec llama-cpp-server /bin/bash
+docker compose exec openhands /bin/bash
 
 # Check GPU usage
-docker-compose exec llama-cpp-server nvidia-smi
+docker compose exec llama-cpp-server nvidia-smi
 
 # Test model loading manually
-docker-compose exec llama-cpp-server /app/llama-server --model /models/devstral-q4_k_m.gguf --host 0.0.0.0 --port 11434
+docker compose exec llama-cpp-server /app/llama-server --model /models/devstral-q4_k_m.gguf --host 0.0.0.0 --port 11434
 ```
 
 ## Performance Tuning
@@ -168,8 +168,8 @@ curl -X POST http://localhost:11434/v1/chat/completions \
 ### Regular Tasks
 ```bash
 # Update containers
-docker-compose pull
-docker-compose up --build
+docker compose pull
+docker compose up --build
 
 # Clean up old containers
 docker system prune
@@ -184,9 +184,9 @@ du -sh models/ workspace/
 ### Log Management
 ```bash
 # View logs
-docker-compose logs --tail=100 -f
+docker compose logs --tail=100 -f
 
 # Clear logs
-docker-compose down
+docker compose down
 docker system prune -f
 ```
