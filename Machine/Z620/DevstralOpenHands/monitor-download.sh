@@ -13,8 +13,12 @@ else
     exit 1
 fi
 
-MODEL_PATH="./models/${MODEL_NAME}"
+MODEL_PATH="${MODEL_DIR}/${MODEL_NAME}"
 TEMP_PATH="${MODEL_PATH}.tmp"
+
+# Expand tilde to full path for compatibility
+MODEL_PATH_EXPANDED="${MODEL_PATH/#\~/$HOME}"
+TEMP_PATH_EXPANDED="${TEMP_PATH/#\~/$HOME}"
 
 # Function to format bytes
 format_bytes() {
@@ -33,11 +37,11 @@ format_bytes() {
 echo "📊 Model Download Monitor"
 echo "========================"
 echo "Model: $MODEL_NAME"
-echo "Path: $MODEL_PATH"
+echo "Path: $MODEL_PATH_EXPANDED"
 echo ""
 
-if [ -f "$MODEL_PATH" ]; then
-    model_size=$(stat -f%z "$MODEL_PATH" 2>/dev/null || stat -c%s "$MODEL_PATH" 2>/dev/null || echo "0")
+if [ -f "$MODEL_PATH_EXPANDED" ]; then
+    model_size=$(stat -f%z "$MODEL_PATH_EXPANDED" 2>/dev/null || stat -c%s "$MODEL_PATH_EXPANDED" 2>/dev/null || echo "0")
     model_formatted=$(format_bytes $model_size)
     echo "✅ Model already exists: $model_formatted"
     echo ""
@@ -46,7 +50,7 @@ if [ -f "$MODEL_PATH" ]; then
     exit 0
 fi
 
-if [ ! -f "$TEMP_PATH" ]; then
+if [ ! -f "$TEMP_PATH_EXPANDED" ]; then
     echo "ℹ️  No download in progress"
     echo "   Run './start.sh' to begin setup"
     exit 0
@@ -59,8 +63,8 @@ echo ""
 last_size=0
 last_time=$(date +%s)
 
-while [ -f "$TEMP_PATH" ]; do
-    current_size=$(stat -f%z "$TEMP_PATH" 2>/dev/null || stat -c%s "$TEMP_PATH" 2>/dev/null || echo "0")
+while [ -f "$TEMP_PATH_EXPANDED" ]; do
+    current_size=$(stat -f%z "$TEMP_PATH_EXPANDED" 2>/dev/null || stat -c%s "$TEMP_PATH_EXPANDED" 2>/dev/null || echo "0")
     current_time=$(date +%s)
     
     if [ $current_size -gt 0 ]; then
@@ -104,8 +108,8 @@ while [ -f "$TEMP_PATH" ]; do
     sleep 5
 done
 
-if [ -f "$MODEL_PATH" ]; then
-    final_size=$(stat -f%z "$MODEL_PATH" 2>/dev/null || stat -c%s "$MODEL_PATH" 2>/dev/null || echo "0")
+if [ -f "$MODEL_PATH_EXPANDED" ]; then
+    final_size=$(stat -f%z "$MODEL_PATH_EXPANDED" 2>/dev/null || stat -c%s "$MODEL_PATH_EXPANDED" 2>/dev/null || echo "0")
     final_formatted=$(format_bytes $final_size)
     echo ""
     echo "✅ Download completed: $final_formatted"

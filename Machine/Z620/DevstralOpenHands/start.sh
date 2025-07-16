@@ -41,15 +41,17 @@ fi
 
 # Create necessary directories
 echo "📁 Creating required directories..."
-mkdir -p models workspace ~/.openhands
+mkdir -p ~/.models workspace ~/.openhands
 
 # Check if model exists
-MODEL_PATH="./models/${MODEL_NAME}"
-if [ ! -f "$MODEL_PATH" ]; then
+MODEL_PATH="${MODEL_DIR}/${MODEL_NAME}"
+# Expand tilde to full path for compatibility
+MODEL_PATH_EXPANDED="${MODEL_PATH/#\~/$HOME}"
+if [ ! -f "$MODEL_PATH_EXPANDED" ]; then
     echo ""
     echo "📥 Model not found. Starting download..."
     echo "   Source: ${MODEL_URL}"
-    echo "   Target: ${MODEL_PATH}"
+    echo "   Target: ${MODEL_PATH_EXPANDED}"
     echo "   Size: ~15GB (may take 20-30 minutes with slow internet)"
     echo ""
     
@@ -60,18 +62,18 @@ if [ ! -f "$MODEL_PATH" ]; then
             --timeout=30 \
             --tries=3 \
             --user-agent="Mozilla/5.0 (compatible; wget)" \
-            -O "${MODEL_PATH}.tmp" \
+            -O "${MODEL_PATH_EXPANDED}.tmp" \
             "${MODEL_URL}"; then
         echo "❌ Download failed!"
-        rm -f "${MODEL_PATH}.tmp"
+        rm -f "${MODEL_PATH_EXPANDED}.tmp"
         exit 1
     fi
     
     # Move to final location
-    mv "${MODEL_PATH}.tmp" "$MODEL_PATH"
+    mv "${MODEL_PATH_EXPANDED}.tmp" "$MODEL_PATH_EXPANDED"
     echo "✅ Model download completed!"
 else
-    echo "✅ Model already exists: $MODEL_PATH"
+    echo "✅ Model already exists: $MODEL_PATH_EXPANDED"
 fi
 
 # Pull runtime container (required for OpenHands)

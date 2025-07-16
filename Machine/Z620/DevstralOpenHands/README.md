@@ -74,10 +74,11 @@ The setup supports multiple NVIDIA GPU architectures by configuring `CUDA_DOCKER
 The system provides a streamlined workflow with better user experience:
 
 ### Host-based Model Download
-- **Location**: Downloads to `./models/` directory on the host
+- **Location**: Downloads to `~/.models/` directory in user's home
 - **Progress Monitoring**: Real-time wget progress with speed and ETA
 - **Resumable**: Supports interrupted downloads with `--continue`
 - **Validation**: Checks file integrity before container startup
+- **Shared**: Models can be reused across multiple projects
 
 ### Fast Container Startup
 - **Immediate Start**: Containers start as soon as model is ready

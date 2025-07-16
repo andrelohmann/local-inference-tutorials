@@ -3,14 +3,15 @@
 docker-compose.override.yml
 .env.local
 
-# Models directory (large files)
-models/*.gguf
-models/*.bin
-models/*.safetensors
-models/*.pt
-models/*.pth
-models/*.tmp
-models/*.placeholder
+# Models directory (large files) - Now stored in ~/.models
+models/
+*.gguf
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.tmp
+*.placeholder
 
 # Workspace directory (user content)
 workspace/*
