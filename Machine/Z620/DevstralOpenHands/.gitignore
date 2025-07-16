@@ -3,30 +3,33 @@
 docker-compose.override.yml
 .env.local
 
-# Models directory (large files) - Now stored in ~/.models
+# Models are now stored in ~/.models (not in repository)
 models/
 *.gguf
 *.bin
 *.safetensors
 *.pt
 *.pth
-*.tmp
-*.placeholder
 
 # Workspace directory (user content)
 workspace/*
 !workspace/.gitkeep
 
-# Logs
+# Logs directory (runtime logs)
+openhands-logs/*
+!openhands-logs/.gitkeep
 *.log
-logs/
-openhands-logs/
 
 # Temporary files
 *.tmp
 *.temp
+*.bak
+*.backup
+
+# OS files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # IDE and editor files
 .vscode/
@@ -35,26 +38,16 @@ Thumbs.db
 *.swo
 *~
 
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Python cache
+# Python cache (if any Python scripts added)
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Node.js
+# Node.js (if any Node.js tools added)
 node_modules/
 npm-debug.log
 yarn-error.log
 
-# Docker volumes
+# Docker volumes (if any)
 .volumes/
-
-# Backup files
-*.bak
-*.backup
-models-backup.tar.gz
