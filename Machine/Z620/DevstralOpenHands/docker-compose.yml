@@ -32,7 +32,7 @@ services:
       - devstral-network
     runtime: nvidia
     healthcheck:
-      test: ["/app/health-check.sh"]
+      test: ["CMD", "/app/health-check.sh"]
       interval: ${HEALTHCHECK_INTERVAL:-30s}
       timeout: ${HEALTHCHECK_TIMEOUT:-10s}
       retries: ${HEALTHCHECK_RETRIES:-10}
