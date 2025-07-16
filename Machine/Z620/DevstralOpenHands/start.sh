@@ -24,10 +24,12 @@ echo "🔐 Setting SANDBOX_USER_ID to: ${SANDBOX_USER_ID}"
 echo ""
 echo "📋 Configuration Summary:"
 echo "  • CUDA Architecture: ${CUDA_DOCKER_ARCH}"
+echo "  • GPU Configuration: ${NVIDIA_VISIBLE_DEVICES}"
 echo "  • Model: ${MODEL_NAME}"
 echo "  • llama.cpp Port: ${LLAMA_ARG_PORT}"
 echo "  • OpenHands Version: ${OPENHANDS_VERSION}"
 echo "  • OpenHands Port: ${OPENHANDS_PORT}"
+echo "  • User ID: ${SANDBOX_USER_ID}"
 echo "  • Context Window: ${LLAMA_ARG_CTX_SIZE} tokens"
 echo "  • GPU Layers: ${LLAMA_ARG_N_GPU_LAYERS}"
 echo "  • Parallel Streams: ${LLAMA_ARG_PARALLEL}"
@@ -90,7 +92,7 @@ docker pull docker.all-hands.dev/all-hands-ai/runtime:${OPENHANDS_RUNTIME_VERSIO
 
 echo ""
 echo "🔧 Building and starting containers..."
-docker compose up --build -d
+SANDBOX_USER_ID=${SANDBOX_USER_ID} docker compose up --build -d
 
 echo ""
 echo "⏳ Waiting for services to become ready..."

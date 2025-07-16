@@ -30,8 +30,14 @@ services:
       - ${MODEL_DIR}:/models
     networks:
       - devstral-network
-    # Note: GPU runtime only available on production hardware, not on dev machine
-    # runtime: nvidia
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['${NVIDIA_VISIBLE_DEVICES:-all}']
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "/app/health-check.sh"]
       interval: ${HEALTHCHECK_INTERVAL:-30s}

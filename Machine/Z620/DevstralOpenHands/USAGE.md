@@ -8,15 +8,38 @@
    ./start.sh
    ```
 
-### Common Operations
-2. **Monitor download progress** (if downloading):
+### Pre-deployment Testing
+
+Before deployment, verify your system configuration:
+
+```bash
+# Test GPU and Docker configuration
+./test-config.sh
+```
+
+This script checks:
+- NVIDIA runtime availability  
+- GPU visibility via nvidia-smi
+- User ID configuration
+- Docker runtime support
+
+## Common Operations
+
+### Service Management
+
+1. **Start services**:
    ```bash
-   ./monitor-download.sh
+   ./start.sh
    ```
 
-3. **Monitor service health**:
+2. **Check service status**:
    ```bash
-   ./monitor-health.sh
+   docker compose ps
+   ```
+
+3. **Monitor service logs**:
+   ```bash
+   docker compose logs -f
    ```
 
 4. **Check container logs**:
@@ -45,7 +68,12 @@ cd local-inference-tutorials/Machine/Z620/DevstralOpenHands
 
 ### Quick Health Check
 ```bash
-./debug-health.sh
+curl http://localhost:11434/health
+```
+
+### Check Service Status
+```bash
+docker compose ps
 ```
 
 ### Manual Container Start
@@ -71,7 +99,7 @@ All configuration is managed through the `.env` file. The docker-compose file us
 ### Model Download (Host-based)
 - **Location**: Downloads to `~/.models/` in user's home directory
 - **Progress**: Full wget progress with speed and ETA
-- **Monitoring**: `./monitor-download.sh` shows real-time progress
+- **Monitoring**: Built into `start.sh` script with real-time progress
 - **Resumable**: Supports interrupted downloads with `--continue`
 - **Shared**: Models can be used across multiple projects
 
@@ -117,14 +145,13 @@ curl http://localhost:11434/health
 ./
 ├── ~/.models/             # Model files in user home (shared across projects)
 │   └── devstral-q4_k_m.gguf
-├── workspace/             # OpenHands workspace
 ├── docker-compose.yml     # Service definitions (GPU-accelerated)
 ├── Dockerfile            # llama.cpp container
 ├── .env                  # Configuration (no default values)
 ├── start.sh              # Production startup script
-├── debug-health.sh       # Health debugging tool
-├── monitor-download.sh   # Download progress monitor
-└── monitor-health.sh     # Health status monitor
+├── test-config.sh        # System configuration verification
+├── workspace/            # OpenHands workspace
+└── openhands-logs/       # OpenHands logs directory
 ```
 
 ## 🌐 Access Points
@@ -171,3 +198,38 @@ curl http://localhost:11434/health
    - Ensure target machine has Git installed
    - Check network connectivity for repository cloning
    - Ensure target machine has required dependencies (Docker, NVIDIA toolkit)
+
+## GPU Configuration
+
+### Selecting GPUs
+
+You can control which GPUs are used by editing the `.env` file:
+
+```bash
+# Use all available GPUs (default)
+NVIDIA_VISIBLE_DEVICES=all
+
+# Use only the first GPU
+NVIDIA_VISIBLE_DEVICES=0
+
+# Use only the second GPU  
+NVIDIA_VISIBLE_DEVICES=1
+
+# Use multiple specific GPUs
+NVIDIA_VISIBLE_DEVICES=0,1
+
+# Disable GPU usage (CPU-only mode)
+NVIDIA_VISIBLE_DEVICES=none
+```
+
+### Testing GPU Configuration
+
+Before starting services, test your GPU configuration:
+
+```bash
+# Test current GPU configuration
+./test-config.sh
+
+# Test with specific GPU
+NVIDIA_VISIBLE_DEVICES=0 docker run --rm --runtime=nvidia nvidia/cuda:12.6.0-base-ubuntu24.04 nvidia-smi
+```
