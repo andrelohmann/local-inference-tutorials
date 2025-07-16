@@ -50,7 +50,43 @@ fi
 
 # Create necessary directories
 echo "📁 Creating required directories..."
-mkdir -p ~/.models workspace ~/.openhands
+mkdir -p ~/.models workspace openhands-logs
+
+# Create OpenHands configuration directory with proper permissions
+echo "🔧 Setting up OpenHands directories..."
+mkdir -p ~/.openhands
+chmod 755 ~/.openhands
+
+# Ensure current user owns the directories
+chown -R $(id -u):$(id -g) ~/.openhands 2>/dev/null || true
+chown -R $(id -u):$(id -g) workspace 2>/dev/null || true
+chown -R $(id -u):$(id -g) openhands-logs 2>/dev/null || true
+
+echo "✅ Directory permissions set for user ID: $(id -u)"
+
+# Verify directory structure
+echo "📋 Directory structure verification:"
+echo "   • ~/.openhands: $(ls -ld ~/.openhands | awk '{print $1, $3, $4}')"
+echo "   • workspace: $(ls -ld workspace | awk '{print $1, $3, $4}')"
+echo "   • openhands-logs: $(ls -ld openhands-logs | awk '{print $1, $3, $4}')"
+
+# Test write permissions
+echo "🔍 Testing write permissions..."
+if ! touch ~/.openhands/test-write 2>/dev/null; then
+    echo "❌ Error: Cannot write to ~/.openhands directory"
+    echo "   Run: chmod 755 ~/.openhands && chown $(id -u):$(id -g) ~/.openhands"
+    exit 1
+fi
+rm -f ~/.openhands/test-write
+
+if ! touch workspace/test-write 2>/dev/null; then
+    echo "❌ Error: Cannot write to workspace directory"
+    echo "   Run: chmod 755 workspace && chown $(id -u):$(id -g) workspace"
+    exit 1
+fi
+rm -f workspace/test-write
+
+echo "✅ Write permissions verified"
 
 # Check if model exists
 MODEL_PATH="${MODEL_DIR}/${MODEL_NAME}"
@@ -177,6 +213,12 @@ echo "🔗 llama.cpp Server: http://localhost:${LLAMA_ARG_PORT}"
 echo ""
 echo "📚 Available tools:"
 echo "   • ./monitor-health.sh - Health status monitoring"
+echo "   • ./debug-permissions.sh - Permission troubleshooting"
 echo "   • docker compose logs -f - Full container logs"
+echo ""
+echo "📝 User Configuration:"
+echo "   • User ID: $(id -u) (automatically set in containers)"
+echo "   • OpenHands data: ~/.openhands (host) -> /home/openhands/.openhands (container)"
+echo "   • Workspace: ./workspace (host) -> /workspace (container)"
 echo ""
 echo "🛑 To stop: docker compose down"

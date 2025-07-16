@@ -197,6 +197,41 @@ The system provides a streamlined workflow with better user experience:
 
 ## Troubleshooting
 
+### User Permission Issues
+If you see permission errors for `/.openhands/sessions/` or similar:
+
+1. **Run the debug script**:
+   ```bash
+   ./debug-permissions.sh
+   ```
+
+2. **Check if SANDBOX_USER_ID is set**:
+   ```bash
+   # Should show your user ID
+   echo $SANDBOX_USER_ID
+   id -u
+   ```
+
+3. **Use the start.sh script** (recommended):
+   ```bash
+   # This automatically sets SANDBOX_USER_ID and creates directories
+   ./start.sh
+   ```
+
+4. **Or manually fix permissions**:
+   ```bash
+   # Create directories with proper permissions
+   mkdir -p ~/.openhands workspace openhands-logs
+   chmod 755 ~/.openhands workspace openhands-logs
+   chown -R $(id -u):$(id -g) ~/.openhands workspace openhands-logs
+   ```
+
+5. **If manually running docker compose**:
+   ```bash
+   # Pass the user ID explicitly
+   SANDBOX_USER_ID=$(id -u) docker compose up -d
+   ```
+
 ### GPU Not Detected
 If you see "no usable GPU found" in the logs:
 
