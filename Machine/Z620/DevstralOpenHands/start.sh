@@ -39,12 +39,16 @@ docker compose up --build -d
 echo ""
 echo "=== Startup Complete ==="
 echo ""
-echo "Services starting up. Model download may take a few minutes on first run..."
+echo "Services starting up. Model download will take 20-30 minutes for 15GB model..."
+echo "The health check now provides detailed status during the entire process."
+echo ""
+echo "Monitor detailed health status:"
+echo "  ./monitor-health.sh"
 echo ""
 echo "Monitor model download progress:"
 echo "  docker compose logs -f llama-cpp-server"
 echo ""
-echo "Access points:"
+echo "Access points (available after model download):"
 echo "- OpenHands Interface: http://localhost:3000"
 echo "- llama.cpp Server API: http://localhost:11434"
 echo "- Health Check: http://localhost:11434/health"
@@ -58,12 +62,16 @@ echo ""
 
 # Wait for services to be ready
 echo "Waiting for services to initialize..."
-sleep 15
+sleep 10
 
 # Check service health
 echo "Checking service status..."
 docker compose ps
 
 echo ""
-echo "Setup complete! Monitor logs to see model download and startup progress."
-echo "Run 'docker compose logs -f llama-cpp-server' to watch the model download."
+echo "Setup complete! Use './monitor-health.sh' to track download progress."
+echo "Expected timeline:"
+echo "  - WAITING: Container starting up"
+echo "  - DOWNLOADING: Model download (20-30 minutes)"
+echo "  - LOADING: Model loading into memory"
+echo "  - SERVING: Ready for requests"

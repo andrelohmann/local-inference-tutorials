@@ -4,7 +4,17 @@
 
 ## Quick Start
 
-1. **Start the services** (model downloads automatically):
+1. **Start the services3. **GPU not detected**:
+   - Verify NVIDIA drivers: `nvidia-smi`
+   - Check Docker GPU support: `docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu24.04 nvidia-smi`
+   - Install NVIDIA Container Toolkit
+
+4. **Service startup failure**:
+   - Check logs: `docker compose logs service-name`
+   - Verify resource availability (RAM, GPU memory)
+   - Check if ports are available
+
+5. **OpenHands can't connect to llama.cpp**:ownloads automatically):
    ```bash
    ./start.sh
    ```
@@ -13,10 +23,26 @@
    - OpenHands: http://localhost:3000
    - llama.cpp API: http://localhost:8080
 
-3. **Monitor model download** (first run only):
+3. **Monitor detailed health status**:
    ```bash
-   docker compose logs -f llama-cpp-server
+   ./monitor-health.sh
    ```
+
+4. **Check service health manually**:
+   ```bash
+   docker compose ps
+   docker exec llama-cpp-devstral /app/health-check.sh
+   ```
+
+## Health Check Status
+
+The intelligent health check provides detailed status information:
+
+- **⏳ WAITING**: Container started, waiting for model download to begin
+- **⏬ DOWNLOADING**: Model download in progress (20-30 minutes for 15GB)
+- **🔄 LOADING**: Model downloaded, loading into memory
+- **✅ SERVING**: Model loaded and server responding to requests
+- **❌ ERROR**: Something went wrong (check logs)
 
 ## Manual Steps
 
@@ -149,11 +175,23 @@ LLAMA_BATCH_SIZE=512         # Batch size
 
 1. **Model not found or download failed**:
    - Check container logs: `docker compose logs -f llama-cpp-server`
-   - Verify internet connectivity
+   - Check health status: `./monitor-health.sh`
+   - Verify internet connectivity and available disk space
    - Try manual download (see Model Management section)
-   - Check available disk space
 
-2. **GPU not detected**:
+2. **Health check shows DOWNLOADING for extended period**:
+   - **Normal for 15GB model**: Download takes 20-30 minutes on slow connections
+   - Monitor progress: `docker compose logs -f llama-cpp-server`
+   - Check download speed and remaining time in logs
+   - Ensure sufficient disk space (20GB+ recommended)
+
+3. **Health check shows ERROR**:
+   - Check detailed logs: `docker compose logs -f llama-cpp-server`
+   - Verify model file integrity
+   - Check available VRAM and system resources
+   - Restart if needed: `docker compose restart llama-cpp-server`
+
+4. **GPU not detected**:
    - Verify NVIDIA drivers: `nvidia-smi`
    - Check Docker GPU support: `docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu24.04 nvidia-smi`
    - Install NVIDIA Container Toolkit

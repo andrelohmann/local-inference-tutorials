@@ -94,6 +94,40 @@ WORKDIR /app
 # Install wget for model download
 RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 
+# Create intelligent health check script
+RUN echo '#!/bin/bash\n\
+# Intelligent health check script\n\
+# Returns different states: downloading, ready, serving\n\
+\n\
+MODEL_DIR="/models"\n\
+MODEL_FILE="${MODEL_FILE:-devstral-q4_k_m.gguf}"\n\
+MODEL_PATH="$MODEL_DIR/$MODEL_FILE"\n\
+\n\
+# Check if model file exists and is complete\n\
+if [ ! -f "$MODEL_PATH" ]; then\n\
+    # Check if download is in progress\n\
+    if [ -f "$MODEL_PATH.tmp" ]; then\n\
+        echo "DOWNLOADING: Model download in progress..."\n\
+        exit 0  # Healthy - downloading\n\
+    else\n\
+        echo "WAITING: Waiting for model download to start..."\n\
+        exit 0  # Healthy - waiting\n\
+    fi\n\
+elif [ ! -s "$MODEL_PATH" ]; then\n\
+    echo "ERROR: Model file exists but is empty"\n\
+    exit 1  # Unhealthy - corrupted\n\
+else\n\
+    # Model exists, check if server is responding\n\
+    if curl -sf http://localhost:11434/health > /dev/null 2>&1; then\n\
+        echo "SERVING: Model loaded and server responding"\n\
+        exit 0  # Healthy - serving\n\
+    else\n\
+        echo "LOADING: Model found, server starting..."\n\
+        exit 0  # Healthy - loading\n\
+    fi\n\
+fi\n\
+' > /app/health-check.sh && chmod +x /app/health-check.sh
+
 # Create startup script that downloads model if needed
 RUN echo '#!/bin/bash\n\
 set -e\n\
@@ -140,6 +174,6 @@ echo "Model: $MODEL_DIR/$MODEL_FILE"\n\
 exec /app/llama-server "$@"\n\
 ' > /app/start-server.sh && chmod +x /app/start-server.sh
 
-HEALTHCHECK CMD [ "curl", "-f", "http://localhost:11434/health" ]
+HEALTHCHECK CMD [ "/app/health-check.sh" ]
 
 ENTRYPOINT [ "/app/start-server.sh" ]
