@@ -155,6 +155,12 @@ fi\n\
 \n\
 SERVER_ARGS+=("--parallel" "${LLAMA_ARG_PARALLEL:-2}")\n\
 \n\
+# Debug: Show all arguments being passed\n\
+echo "=== Debug: llama-server arguments ==="\n\
+echo "Full command: /app/llama-server ${SERVER_ARGS[@]}"\n\
+echo "GPU Layers argument: --n-gpu-layers ${LLAMA_ARG_N_GPU_LAYERS:--1}"\n\
+echo "==================================="\n\
+\n\
 # Start the server with proper arguments\n\
 exec /app/llama-server "${SERVER_ARGS[@]}" "$@"\n\
 ' > /app/start-server.sh && chmod +x /app/start-server.sh

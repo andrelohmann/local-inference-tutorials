@@ -14,14 +14,18 @@ Before deployment, verify your system configuration:
 
 ```bash
 # Test GPU and Docker configuration
+# This automatically reads all settings from .env file
 ./test-config.sh
 ```
 
 This script checks:
-- NVIDIA runtime availability  
+- NVIDIA runtime availability with your configured CUDA/Ubuntu versions
 - GPU visibility via nvidia-smi
 - User ID configuration
-- Docker runtime support
+- Model file existence and size
+- OpenHands configuration
+- llama.cpp performance settings
+- Configuration validation and port conflicts
 
 ## Common Operations
 

@@ -102,7 +102,7 @@ This mounts your local `./workspace` directory to `/workspace` inside the contai
 - `Dockerfile` - Multi-stage build for llama.cpp server
 - `.env` - Environment variables configuration
 - `start.sh` - Production startup script
-- `test-config.sh` - System configuration verification script
+- `test-config.sh` - System configuration verification script (reads all settings from .env)
 - `workspace/` - Your working directory (mounted into OpenHands)
 - `openhands-logs/` - OpenHands logs directory
 
@@ -220,7 +220,8 @@ If you see "no usable GPU found" in the logs:
 
 4. **Test GPU configuration**:
    ```bash
-   # Run the configuration test
+   # Run the comprehensive configuration test
+   # This reads all settings from .env file automatically
    ./test-config.sh
    ```
 
@@ -242,20 +243,38 @@ NVIDIA_VISIBLE_DEVICES=none
 ```
 
 ### User Permission Issues
-If you see permission errors for `/logs` or `/.openhands`:
+If you see permission errors for `/.openhands/sessions/` or similar:
 
-1. **Check user ID**:
+1. **Check if SANDBOX_USER_ID is set**:
    ```bash
-   # Should match the user running the container
+   # Should show your user ID
    echo $SANDBOX_USER_ID
    id -u
    ```
 
-2. **Fix permissions**:
+2. **Use the start.sh script** (recommended):
+   ```bash
+   # This automatically sets SANDBOX_USER_ID
+   ./start.sh
+   ```
+
+3. **Or set SANDBOX_USER_ID in .env**:
+   ```bash
+   # Add to .env file
+   SANDBOX_USER_ID=1000  # Replace with your user ID
+   ```
+
+4. **Fix directory permissions**:
    ```bash
    # Create and fix ownership
    mkdir -p openhands-logs workspace
    sudo chown -R $(id -u):$(id -g) openhands-logs workspace
+   ```
+
+5. **If manually running docker compose**:
+   ```bash
+   # Pass the user ID explicitly
+   SANDBOX_USER_ID=$(id -u) docker compose up -d
    ```
 
 ### Common Solutions

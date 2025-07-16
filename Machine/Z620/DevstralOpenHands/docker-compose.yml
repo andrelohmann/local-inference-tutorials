@@ -31,13 +31,6 @@ services:
     networks:
       - devstral-network
     runtime: nvidia
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ['${NVIDIA_VISIBLE_DEVICES:-all}']
-              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "/app/health-check.sh"]
       interval: ${HEALTHCHECK_INTERVAL:-30s}
@@ -64,6 +57,8 @@ services:
       - "${OPENHANDS_PORT}:3000"
     volumes:
       - ./openhands-logs:/logs
+      - ./workspace:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
       - /var/run/docker.sock:/var/run/docker.sock
       - ~/.openhands:/.openhands
     extra_hosts:
