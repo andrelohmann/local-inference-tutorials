@@ -68,10 +68,72 @@ wget -O models/devstral-q4_k_m.gguf \
 ### GPU Settings
 Edit `.env` file to modify GPU settings:
 ```env
-CUDA_DOCKER_ARCH=61          # Pascal architecture
-LLAMA_N_GPU_LAYERS=35        # Number of layers to run on GPU
-LLAMA_CTX_SIZE=4096          # Context size
-LLAMA_PARALLEL=4             # Parallel processing slots
+CUDA_DOCKER_ARCH=61          # Pascal=61, Turing=75, Ampere=86, Ada=89, Hopper=90
+LLAMA_ARG_N_GPU_LAYERS=35    # Number of layers to run on GPU (-1 = all layers)
+```
+
+### Context and Memory Configuration
+```env
+LLAMA_ARG_CTX_SIZE=131072     # Context window size (131072 = 128k tokens)
+LLAMA_ARG_BATCH_SIZE=2048     # Batch size for prompt processing (higher = faster, more VRAM)
+LLAMA_ARG_UBATCH_SIZE=512     # Micro-batch size for generation (lower = less VRAM)
+```
+
+### Performance and Concurrency
+```env
+LLAMA_ARG_THREADS=6           # CPU threads (match your CPU cores)
+LLAMA_ARG_PARALLEL=2          # Parallel processing slots (2 = dual concurrent streams)
+LLAMA_ARG_FLASH_ATTN=1        # Flash attention (1=on, 0=off) - faster processing
+LLAMA_ARG_CONT_BATCHING=1     # Continuous batching (1=on, 0=off) - better throughput
+```
+
+### Parameter Explanations
+
+#### Context Window (`LLAMA_ARG_CTX_SIZE`)
+- **4096**: Small context, fast processing, low VRAM usage
+- **32768**: Medium context (32k tokens), balanced performance
+- **131072**: Full Devstral context (128k tokens), high VRAM usage
+- **Higher values**: Better long-context understanding but require more VRAM
+
+#### GPU Layers (`LLAMA_ARG_N_GPU_LAYERS`)
+- **-1**: All layers on GPU (fastest, highest VRAM usage)
+- **35**: Partial GPU acceleration (balanced)
+- **0**: CPU only (slowest, no GPU VRAM needed)
+- **Adjust based on available VRAM**: More layers = faster but more VRAM
+
+#### Batch Sizes
+- **BATCH_SIZE**: Prompt processing batch size
+  - Higher = faster prompt processing but more VRAM
+  - Lower = slower but less VRAM usage
+- **UBATCH_SIZE**: Generation micro-batch size
+  - Lower = less VRAM during generation
+  - Higher = faster generation but more VRAM
+
+#### Parallel Processing (`LLAMA_ARG_PARALLEL`)
+- **1**: Single request processing
+- **2**: Dual concurrent streams (your requirement)
+- **4**: Quad concurrent streams (high VRAM usage)
+- **Higher values**: More concurrent users but exponentially more VRAM
+
+#### Flash Attention (`LLAMA_ARG_FLASH_ATTN`)
+- **1**: Enabled - faster attention computation, less VRAM
+- **0**: Disabled - slower but more compatible
+
+#### Continuous Batching (`LLAMA_ARG_CONT_BATCHING`)
+- **1**: Enabled - better throughput for multiple requests
+- **0**: Disabled - simpler processing, lower throughput
+
+### Architecture Override
+To use a different GPU architecture, update the `CUDA_DOCKER_ARCH` in `.env`:
+```env
+# For RTX 30xx series (Ampere)
+CUDA_DOCKER_ARCH=86
+
+# For RTX 40xx series (Ada Lovelace)
+CUDA_DOCKER_ARCH=89
+
+# For RTX 20xx series (Turing)
+CUDA_DOCKER_ARCH=75
 ```
 
 ### Model Settings
@@ -142,6 +204,45 @@ docker compose exec llama-cpp-server /app/llama-server --model /models/devstral-
    - Use Q4_K_M quantization for balance of speed/quality
    - Consider Q5_K_M for better quality with more VRAM
    - Use Q8_0 only if you have sufficient VRAM (16GB+)
+
+### VRAM Usage Estimation (Pascal Architecture)
+
+For your Quadro P4000 (8GB) and P5000 (16GB) setup:
+
+#### 128k Context Configuration
+```env
+LLAMA_ARG_CTX_SIZE=131072     # 128k tokens
+LLAMA_ARG_PARALLEL=2          # 2 concurrent streams
+LLAMA_ARG_N_GPU_LAYERS=35     # Partial GPU acceleration
+```
+
+**Estimated VRAM Usage:**
+- **Model (Q4_K_M)**: ~4.5GB
+- **128k Context (2 streams)**: ~8-10GB
+- **Total**: ~12-14GB
+
+**Recommendations:**
+- **Single P5000 (16GB)**: Can handle 128k context with 2 streams
+- **P4000 + P5000 (24GB total)**: Ideal for full GPU acceleration
+- **If VRAM limited**: Reduce context size or parallel streams
+
+#### Alternative Configurations
+
+**Medium Context (32k tokens):**
+```env
+LLAMA_ARG_CTX_SIZE=32768      # 32k tokens
+LLAMA_ARG_PARALLEL=2          # 2 concurrent streams
+LLAMA_ARG_N_GPU_LAYERS=-1     # All layers on GPU
+```
+**VRAM Usage**: ~8-10GB (fits on P5000)
+
+**Conservative Setup (P4000 only):**
+```env
+LLAMA_ARG_CTX_SIZE=16384      # 16k tokens
+LLAMA_ARG_PARALLEL=2          # 2 concurrent streams
+LLAMA_ARG_N_GPU_LAYERS=25     # Reduced GPU layers
+```
+**VRAM Usage**: ~6-7GB (fits on P4000)
 
 ## API Usage
 

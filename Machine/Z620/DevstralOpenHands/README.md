@@ -10,10 +10,18 @@ The setup consists of two main services:
 
 ## Architecture
 
-- **Target GPU**: NVIDIA Pascal (Compute Capability 6.1)
+- **Target GPU**: NVIDIA Pascal (Compute Capability 6.1) - configurable
 - **Hardware**: HP Z620 with Quadro P4000 (8GB) and P5000 (16GB)
 - **Model**: Devstral (automatically downloaded on first startup)
 - **Inference Engine**: llama.cpp with CUDA support
+
+### GPU Architecture Support
+The setup supports multiple NVIDIA GPU architectures by configuring `CUDA_DOCKER_ARCH` in `.env`:
+- **Pascal (61)**: GTX 10xx, Quadro P series (default for Z620)
+- **Turing (75)**: RTX 20xx, Quadro RTX series
+- **Ampere (86)**: RTX 30xx, A series
+- **Ada Lovelace (89)**: RTX 40xx series
+- **Hopper (90)**: H100, H200 series
 
 ## Implementation Plan
 
@@ -80,14 +88,22 @@ http://localhost:11434
 ## Configuration
 
 ### GPU Settings
-- **CUDA Architecture**: 61 (Pascal)
+- **CUDA Architecture**: 61 (Pascal) - configurable via `CUDA_DOCKER_ARCH`
 - **Memory**: Automatically configured based on available VRAM
 - **Compute Mode**: Optimized for inference workloads
 
 ### Model Settings
 - **Model**: Devstral (automatically downloaded)
-- **Context Length**: Configurable via environment variables
+- **Context Length**: 128k tokens (configurable via `LLAMA_ARG_CTX_SIZE`)
+- **Concurrency**: 2 parallel streams (configurable via `LLAMA_ARG_PARALLEL`)
 - **Batch Size**: Optimized for Pascal architecture
+- **GPU Acceleration**: Partial layers on GPU (configurable via `LLAMA_ARG_N_GPU_LAYERS`)
+
+### Performance Features
+- **Flash Attention**: Enabled for faster processing
+- **Continuous Batching**: Enabled for better throughput
+- **Dual Concurrent Streams**: Support for 2 simultaneous requests
+- **Full Context Window**: 128k tokens for long-context understanding
 
 ## Prerequisites
 
