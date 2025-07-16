@@ -121,12 +121,42 @@ echo "Model: $MODEL_PATH"\n\
 echo "Host: ${LLAMA_ARG_HOST:-0.0.0.0}"\n\
 echo "Port: ${LLAMA_ARG_PORT:-11434}"\n\
 echo "Context Size: ${LLAMA_ARG_CTX_SIZE:-131072} tokens"\n\
-echo "GPU Layers: ${LLAMA_ARG_N_GPU_LAYERS:-35}"\n\
+echo "GPU Layers: ${LLAMA_ARG_N_GPU_LAYERS:--1}"\n\
 echo "Parallel Streams: ${LLAMA_ARG_PARALLEL:-2}"\n\
 echo ""\n\
 \n\
-# Start the server\n\
-exec /app/llama-server "$@"\n\
+# Build server arguments from environment variables\n\
+SERVER_ARGS=()\n\
+\n\
+# Model path (required)\n\
+SERVER_ARGS+=("--model" "$MODEL_PATH")\n\
+\n\
+# Network settings\n\
+SERVER_ARGS+=("--host" "${LLAMA_ARG_HOST:-0.0.0.0}")\n\
+SERVER_ARGS+=("--port" "${LLAMA_ARG_PORT:-11434}")\n\
+\n\
+# Context and GPU settings\n\
+SERVER_ARGS+=("--ctx-size" "${LLAMA_ARG_CTX_SIZE:-131072}")\n\
+SERVER_ARGS+=("--n-gpu-layers" "${LLAMA_ARG_N_GPU_LAYERS:--1}")\n\
+SERVER_ARGS+=("--threads" "${LLAMA_ARG_THREADS:-6}")\n\
+\n\
+# Batch settings\n\
+SERVER_ARGS+=("--batch-size" "${LLAMA_ARG_BATCH_SIZE:-4096}")\n\
+SERVER_ARGS+=("--ubatch-size" "${LLAMA_ARG_UBATCH_SIZE:-2048}")\n\
+\n\
+# Performance features\n\
+if [ "${LLAMA_ARG_FLASH_ATTN:-1}" = "1" ]; then\n\
+    SERVER_ARGS+=("--flash-attn")\n\
+fi\n\
+\n\
+if [ "${LLAMA_ARG_CONT_BATCHING:-1}" = "1" ]; then\n\
+    SERVER_ARGS+=("--cont-batching")\n\
+fi\n\
+\n\
+SERVER_ARGS+=("--parallel" "${LLAMA_ARG_PARALLEL:-2}")\n\
+\n\
+# Start the server with proper arguments\n\
+exec /app/llama-server "${SERVER_ARGS[@]}" "$@"\n\
 ' > /app/start-server.sh && chmod +x /app/start-server.sh
 
 HEALTHCHECK CMD [ "/app/health-check.sh" ]

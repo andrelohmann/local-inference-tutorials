@@ -17,6 +17,10 @@ else
     exit 1
 fi
 
+# Set dynamic SANDBOX_USER_ID
+export SANDBOX_USER_ID=$(id -u)
+echo "🔐 Setting SANDBOX_USER_ID to: ${SANDBOX_USER_ID}"
+
 echo ""
 echo "📋 Configuration Summary:"
 echo "  • CUDA Architecture: ${CUDA_DOCKER_ARCH}"
@@ -27,6 +31,7 @@ echo "  • OpenHands Port: ${OPENHANDS_PORT}"
 echo "  • Context Window: ${LLAMA_ARG_CTX_SIZE} tokens"
 echo "  • GPU Layers: ${LLAMA_ARG_N_GPU_LAYERS}"
 echo "  • Parallel Streams: ${LLAMA_ARG_PARALLEL}"
+echo "  • Sandbox User ID: ${SANDBOX_USER_ID}"
 echo ""
 
 # Check if Docker is running

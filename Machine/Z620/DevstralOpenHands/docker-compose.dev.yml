@@ -1,27 +1,26 @@
 services:
+  # Development version - CPU only llama.cpp server (no GPU requirements)
   llama-cpp-server:
     build:
       context: .
       dockerfile: Dockerfile
       target: server
       args:
-        CUDA_DOCKER_ARCH: ${CUDA_DOCKER_ARCH}  # Use value from .env file
-    container_name: llama-cpp-devstral
+        CUDA_DOCKER_ARCH: default  # CPU-only build for development
+    container_name: llama-cpp-devstral-dev
     restart: unless-stopped
     environment:
       - LLAMA_ARG_HOST=${LLAMA_ARG_HOST}
       - LLAMA_ARG_PORT=${LLAMA_ARG_PORT}
       - LLAMA_ARG_MODEL=${LLAMA_ARG_MODEL}
       - LLAMA_ARG_CTX_SIZE=${LLAMA_ARG_CTX_SIZE}
-      - LLAMA_ARG_N_GPU_LAYERS=${LLAMA_ARG_N_GPU_LAYERS}
+      - LLAMA_ARG_N_GPU_LAYERS=0  # CPU-only for development
       - LLAMA_ARG_THREADS=${LLAMA_ARG_THREADS}
-      - LLAMA_ARG_BATCH_SIZE=${LLAMA_ARG_BATCH_SIZE}
-      - LLAMA_ARG_UBATCH_SIZE=${LLAMA_ARG_UBATCH_SIZE}
-      - LLAMA_ARG_FLASH_ATTN=${LLAMA_ARG_FLASH_ATTN}
-      - LLAMA_ARG_CONT_BATCHING=${LLAMA_ARG_CONT_BATCHING}
-      - LLAMA_ARG_PARALLEL=${LLAMA_ARG_PARALLEL}
-      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES}
-      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES}
+      - LLAMA_ARG_BATCH_SIZE=512   # Smaller batch size for CPU
+      - LLAMA_ARG_UBATCH_SIZE=256  # Smaller micro-batch size for CPU
+      - LLAMA_ARG_FLASH_ATTN=0    # Disable flash attention for CPU
+      - LLAMA_ARG_CONT_BATCHING=1
+      - LLAMA_ARG_PARALLEL=1      # Single processing slot for CPU
       - MODEL_URL=${MODEL_URL}
       - MODEL_FILE=${MODEL_NAME}
     ports:
@@ -30,18 +29,17 @@ services:
       - ${MODEL_DIR}:/models
     networks:
       - devstral-network
-    # Note: GPU runtime only available on production hardware, not on dev machine
-    # runtime: nvidia
+    # No GPU runtime for development
     healthcheck:
       test: ["CMD", "/app/health-check.sh"]
       interval: ${HEALTHCHECK_INTERVAL:-30s}
       timeout: ${HEALTHCHECK_TIMEOUT:-10s}
       retries: ${HEALTHCHECK_RETRIES:-10}
-      start_period: ${HEALTHCHECK_START_PERIOD:-60s}  # Start checking after 1 minute
+      start_period: ${HEALTHCHECK_START_PERIOD:-60s}
 
   openhands:
     image: docker.all-hands.dev/all-hands-ai/openhands:${OPENHANDS_VERSION}
-    container_name: openhands
+    container_name: openhands-dev
     restart: unless-stopped
     environment:
       - SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:${OPENHANDS_RUNTIME_VERSION}

@@ -1,42 +1,115 @@
-# Devstral and OpenHands with llama.cpp
+# Devstral + OpenHands Development Environment
 
-This Docker Compose setup provides an integrated environment for running Devstral model inference with OpenHands, specifically optimized for NVIDIA Pascal architecture (Quadro P4000/P5000).
+This project provides a complete development environment for running Devstral with OpenHands, supporting both development (CPU-only) and production (GPU-accelerated) deployments.
 
-## Overview
+## Important Notes
 
-The setup consists of two main services:
-1. **llama-cpp-server**: Custom-built llama.cpp server optimized for Pascal architecture with automatic Devstral model download on startup
-2. **openhands**: All-hands/OpenHands container configured to use the llama.cpp server
+⚠️ **Hardware Requirements**: The main `docker-compose.yml` file is designed for production hardware with NVIDIA GPUs. For development on machines without proper GPU support, use `docker-compose.dev.yml`.
 
-## Architecture
+⚠️ **Workspace Configuration**: OpenHands uses the modern `SANDBOX_VOLUMES` configuration (the `WORKSPACE_*` variables are deprecated).
 
-- **Target GPU**: NVIDIA Pascal (Compute Capability 6.1) - configurable
-- **Hardware**: HP Z620 with Quadro P4000 (8GB) and P5000 (16GB)
-- **Model**: Devstral (automatically downloaded on first startup)
-- **Inference Engine**: llama.cpp with CUDA support
+## Quick Start
 
-### GPU Architecture Support
+### Development (CPU-only)
+```bash
+# Use the development startup script (handles user ID automatically)
+./start-dev.sh
+
+# Or manually:
+export SANDBOX_USER_ID=$(id -u)
+docker compose -f docker-compose.dev.yml up -d
+```
+
+### Production (GPU-accelerated)
+```bash
+# Use the production startup script (handles user ID automatically)
+./start.sh
+
+# Or manually:
+export SANDBOX_USER_ID=$(id -u)
+docker compose up -d
+```
+
+## Remote Deployment
+
+### Target Machine Requirements
+- NVIDIA GPU with Pascal architecture or newer
+- NVIDIA Container Toolkit installed
+- Docker Compose V2
+- At least 8GB VRAM for full model loading
+
+### Deployment Steps
+1. **Copy configuration to target machine**:
+   ```bash
+   scp -r ./Machine/Z620/DevstralOpenHands user@target-machine:~/
+   ```
+
+2. **On target machine, run**:
+   ```bash
+   cd ~/DevstralOpenHands
+   ./start.sh  # User ID will be automatically detected
+   ```
+
+### User ID Detection
+The startup scripts automatically detect the current user ID using `$(id -u)` and set the `SANDBOX_USER_ID` environment variable accordingly. This ensures proper file permissions in the OpenHands sandbox environment.
+
+## Configuration
+
+### Environment Variables
+
+All configuration is managed through the `.env` file. The docker-compose files use environment variables **without default values** to ensure `.env` file values take precedence.
+
+#### Model Configuration
+- `LLAMA_ARG_MODEL`: Path to the model file inside the container
+- `LLAMA_ARG_CTX_SIZE`: Context window size (128k tokens for Devstral)
+- `LLAMA_ARG_N_GPU_LAYERS`: Number of layers on GPU (-1 = all, 0 = CPU-only)
+
+#### Performance Settings
+- `LLAMA_ARG_THREADS`: CPU threads for processing
+- `LLAMA_ARG_BATCH_SIZE`: Batch size for prompt processing
+- `LLAMA_ARG_UBATCH_SIZE`: Micro-batch size for generation
+
+#### OpenHands Configuration (Modern Approach)
+- `SANDBOX_VOLUMES`: Workspace mount configuration (replaces deprecated WORKSPACE_*)
+- `SANDBOX_USER_ID`: User ID for sandbox environment (automatically detected at runtime)
+- `OPENHANDS_VERSION`: OpenHands container version
+- `OPENHANDS_RUNTIME_VERSION`: Runtime container version
+- `OPENHANDS_LLM_MODEL`: Model identifier for OpenHands
+- `OPENHANDS_LLM_BASE_URL`: Base URL for llama.cpp server
+
+### Configuration Validation
+
+The configuration follows the latest OpenHands documentation:
+- ✅ Uses `SANDBOX_VOLUMES` instead of deprecated `WORKSPACE_*` variables
+- ✅ Automatically detects `SANDBOX_USER_ID` at runtime using `$(id -u)`
+- ✅ Properly configured for Docker runtime with socket mounting
+- ✅ Separate configurations for development and production environments
+
+### Workspace Configuration
+
+OpenHands uses the modern `SANDBOX_VOLUMES` approach for mounting your workspace:
+
+```bash
+# In .env file
+SANDBOX_VOLUMES=$PWD/workspace:/workspace:rw
+SANDBOX_USER_ID=1000
+```
+
+This mounts your local `./workspace` directory to `/workspace` inside the container with read-write access.
+
+## File Structure
+
+- `docker-compose.yml` - Production configuration (GPU-accelerated)
+- `docker-compose.dev.yml` - Development configuration (CPU-only)
+- `Dockerfile` - Multi-stage build for llama.cpp server
+- `.env` - Environment variables configuration
+- `workspace/` - Your working directory (mounted into OpenHands)
+- `openhands-logs/` - OpenHands logs directory
+
+## GPU Architecture Support
+
 The setup supports multiple NVIDIA GPU architectures by configuring `CUDA_DOCKER_ARCH` in `.env`:
 - **Pascal (61)**: GTX 10xx, Quadro P series (default for Z620)
-- **Turing (75)**: RTX 20xx, Quadro RTX series
-- **Ampere (86)**: RTX 30xx, A series
-- **Ada Lovelace (89)**: RTX 40xx series
-- **Hopper (90)**: H100, H200 series
-
-## Implementation Plan
-
-### Phase 1: llama.cpp Container Setup
-1. **Custom Dockerfile Enhancement**
-   - Build llama.cpp with Pascal architecture optimization (CUDA_DOCKER_ARCH=61)
-   - Add automatic model download capability integrated into container startup
-   - Configure server mode with proper networking
-
-2. **Model Management**
-   - Implement automatic Devstral model download on first container start
-   - Configure model storage and caching in persistent volume
-   - Add model validation checks
-
-### Phase 2: OpenHands Integration
 1. **Container Configuration**
    - Set up all-hands/OpenHands container
    - Configure network connectivity between services
@@ -242,3 +315,45 @@ This setup uses the official OpenHands v0.48 configuration with the following co
 - [x] Integrated health checks
 - [x] Documentation
 - [x] Usage guide
+
+## Deployment Automation
+
+### Automated Deployment Script
+
+Use the `deploy.sh` script to automatically deploy the configuration to your target machine:
+
+```bash
+# Deploy to target machine
+./deploy.sh user@target-machine
+
+# Deploy to custom path
+./deploy.sh -p /opt/devstral user@production-server
+```
+
+The deployment script will:
+1. ✅ Test SSH connection to target machine
+2. 📁 Copy all configuration files
+3. 🔐 Set proper file permissions
+4. 🔍 Check target machine requirements (Docker, NVIDIA toolkit)
+5. 📋 Provide next steps for startup
+
+### Manual Deployment
+
+If you prefer manual deployment:
+
+```bash
+# Copy configuration to target machine
+scp -r ./Machine/Z620/DevstralOpenHands user@target-machine:~/
+
+# SSH to target machine
+ssh user@target-machine
+
+# Navigate to deployment directory
+cd ~/DevstralOpenHands
+
+# Set permissions
+chmod +x start.sh start-dev.sh monitor-*.sh
+
+# Start services
+./start.sh
+```
