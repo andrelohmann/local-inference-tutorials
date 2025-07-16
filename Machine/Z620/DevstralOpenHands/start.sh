@@ -1,77 +1,137 @@
 #!/bin/bash
 
-# Devstral OpenHands Startup Script
-# This script sets up and starts the complete environment
+# Devstral + OpenHands Docker Compose Startup Script
+# This script handles model download and container startup
 
 set -e
 
-echo "=== Devstral OpenHands Setup ==="
-echo "Starting llama.cpp server with OpenHands integration"
-echo "Target Architecture: NVIDIA Pascal (Quadro P4000/P5000)"
+echo "🚀 Starting Devstral + OpenHands Setup..."
+echo "=================================================="
+
+# Load environment variables
+if [ -f .env ]; then
+    source .env
+    echo "✅ Environment variables loaded"
+else
+    echo "❌ Error: .env file not found"
+    exit 1
+fi
+
+echo ""
+echo "📋 Configuration Summary:"
+echo "  • CUDA Architecture: ${CUDA_DOCKER_ARCH}"
+echo "  • Model: ${MODEL_NAME}"
+echo "  • llama.cpp Port: ${LLAMA_ARG_PORT}"
+echo "  • OpenHands Port: ${OPENHANDS_PORT}"
+echo "  • Context Window: ${LLAMA_ARG_CTX_SIZE} tokens"
+echo "  • Parallel Streams: ${LLAMA_ARG_PARALLEL}"
 echo ""
 
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
-    echo "Error: Docker is not running. Please start Docker first."
+    echo "❌ Error: Docker is not running. Please start Docker first."
     exit 1
 fi
 
 # Check if NVIDIA Docker runtime is available
 if ! docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu24.04 nvidia-smi > /dev/null 2>&1; then
-    echo "Warning: NVIDIA Docker runtime not available. GPU acceleration will not work."
-    echo "Please install NVIDIA Container Toolkit."
+    echo "⚠️  Warning: NVIDIA Docker runtime not available. GPU acceleration will not work."
+    echo "   Please install NVIDIA Container Toolkit."
 fi
 
 # Create necessary directories
-echo "Creating required directories..."
+echo "📁 Creating required directories..."
 mkdir -p models workspace ~/.openhands
 
+# Check if model exists
+MODEL_PATH="./models/${MODEL_NAME}"
+if [ ! -f "$MODEL_PATH" ]; then
+    echo ""
+    echo "📥 Model not found. Starting download..."
+    echo "   Source: ${MODEL_URL}"
+    echo "   Target: ${MODEL_PATH}"
+    echo "   Size: ~15GB (may take 20-30 minutes with slow internet)"
+    echo ""
+    
+    # Download with progress
+    echo "⏳ Downloading model..."
+    if ! wget --progress=bar:force:noscroll --show-progress \
+            --continue \
+            --timeout=30 \
+            --tries=3 \
+            --user-agent="Mozilla/5.0 (compatible; wget)" \
+            -O "${MODEL_PATH}.tmp" \
+            "${MODEL_URL}"; then
+        echo "❌ Download failed!"
+        rm -f "${MODEL_PATH}.tmp"
+        exit 1
+    fi
+    
+    # Move to final location
+    mv "${MODEL_PATH}.tmp" "$MODEL_PATH"
+    echo "✅ Model download completed!"
+else
+    echo "✅ Model already exists: $MODEL_PATH"
+fi
+
 # Pull runtime container (required for OpenHands)
-echo "Pulling OpenHands runtime container..."
+echo ""
+echo "📦 Pulling OpenHands runtime container..."
 docker pull docker.all-hands.dev/all-hands-ai/runtime:0.48-nikolaik
 
-# Build and start services
-echo "Building and starting services..."
-echo "The model will be downloaded automatically on first startup..."
-
+echo ""
+echo "🔧 Building and starting containers..."
 docker compose up --build -d
 
 echo ""
-echo "=== Startup Complete ==="
-echo ""
-echo "Services starting up. Model download will take 20-30 minutes for 15GB model..."
-echo "The health check now provides detailed status during the entire process."
-echo ""
-echo "Monitor detailed health status:"
-echo "  ./monitor-health.sh"
-echo ""
-echo "Monitor model download progress:"
-echo "  docker compose logs -f llama-cpp-server"
-echo ""
-echo "Access points (available after model download):"
-echo "- OpenHands Interface: http://localhost:3000"
-echo "- llama.cpp Server API: http://localhost:11434"
-echo "- Health Check: http://localhost:11434/health"
-echo ""
-echo "To monitor all logs:"
-echo "  docker compose logs -f"
-echo ""
-echo "To stop services:"
-echo "  docker compose down"
-echo ""
+echo "⏳ Waiting for services to become ready..."
 
-# Wait for services to be ready
-echo "Waiting for services to initialize..."
-sleep 10
+# Wait for llama.cpp server to be healthy
+echo "   • Waiting for llama.cpp server..."
+while true; do
+    if docker compose ps --services --filter "status=running" | grep -q "llama-cpp-server"; then
+        HEALTH_STATUS=$(docker compose ps --format "table {{.Service}}\t{{.Status}}" | grep "llama-cpp-server" | awk '{print $2}')
+        
+        if [[ "$HEALTH_STATUS" == *"healthy"* ]]; then
+            echo "   ✅ llama.cpp server is ready!"
+            break
+        else
+            echo "   ⏳ llama.cpp server status: $HEALTH_STATUS"
+        fi
+    else
+        echo "   ⏳ Starting llama.cpp server..."
+    fi
+    
+    sleep 5
+done
 
-# Check service health
-echo "Checking service status..."
-docker compose ps
+# Wait for OpenHands to be healthy
+echo "   • Waiting for OpenHands..."
+while true; do
+    if docker compose ps --services --filter "status=running" | grep -q "openhands"; then
+        HEALTH_STATUS=$(docker compose ps --format "table {{.Service}}\t{{.Status}}" | grep "openhands" | awk '{print $2}')
+        
+        if [[ "$HEALTH_STATUS" == *"healthy"* ]] || [[ "$HEALTH_STATUS" == *"running"* ]]; then
+            echo "   ✅ OpenHands is ready!"
+            break
+        else
+            echo "   ⏳ OpenHands status: $HEALTH_STATUS"
+        fi
+    else
+        echo "   ⏳ Starting OpenHands..."
+    fi
+    
+    sleep 5
+done
 
 echo ""
-echo "Setup complete! Use './monitor-health.sh' to track download progress."
-echo "Expected timeline:"
-echo "  - WAITING: Container starting up"
-echo "  - DOWNLOADING: Model download (20-30 minutes)"
-echo "  - LOADING: Model loading into memory"
-echo "  - SERVING: Ready for requests"
+echo "🎉 Setup Complete!"
+echo "=================================================="
+echo "🌐 OpenHands Interface: http://localhost:${OPENHANDS_PORT}"
+echo "🔗 llama.cpp Server: http://localhost:${LLAMA_ARG_PORT}"
+echo ""
+echo "📚 Available tools:"
+echo "   • ./monitor-health.sh - Health status monitoring"
+echo "   • docker compose logs -f - Full container logs"
+echo ""
+echo "🛑 To stop: docker compose down"

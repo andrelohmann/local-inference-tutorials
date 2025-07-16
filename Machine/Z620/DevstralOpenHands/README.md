@@ -69,6 +69,27 @@ The setup supports multiple NVIDIA GPU architectures by configuring `CUDA_DOCKER
    - Document configuration options
    - Provide troubleshooting guide
 
+## 📊 Enhanced Download & Startup Process
+
+The system provides a streamlined workflow with better user experience:
+
+### Host-based Model Download
+- **Location**: Downloads to `./models/` directory on the host
+- **Progress Monitoring**: Real-time wget progress with speed and ETA
+- **Resumable**: Supports interrupted downloads with `--continue`
+- **Validation**: Checks file integrity before container startup
+
+### Fast Container Startup
+- **Immediate Start**: Containers start as soon as model is ready
+- **No Waiting**: No timeout issues during download
+- **Health Checks**: Simple validation that model exists and server responds
+- **Better Error Handling**: Clear separation between download and runtime issues
+
+### Monitoring Tools
+1. **Download Progress**: `./monitor-download.sh` - Real-time progress with speed and ETA
+2. **Health Status**: `./monitor-health.sh` - Service health monitoring
+3. **Container Logs**: `docker compose logs -f` - Detailed container output
+
 ## Quick Start
 
 ```bash
