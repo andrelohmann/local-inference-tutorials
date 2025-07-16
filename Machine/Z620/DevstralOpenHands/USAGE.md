@@ -2,11 +2,13 @@
 
 ## 🚀 Quick Start
 
+### Production Setup (GPU-accelerated)
 1. **Start the complete setup** (downloads model if needed):
    ```bash
    ./start.sh
    ```
 
+### Common Operations
 2. **Monitor download progress** (if downloading):
    ```bash
    ./monitor-download.sh
@@ -27,6 +29,18 @@
    docker compose down
    ```
 
+## 🌐 Remote Deployment
+
+### Git-based Deployment
+```bash
+# Clone repository on target machine
+git clone https://github.com/andrelohmann/local-inference-tutorials.git
+cd local-inference-tutorials/Machine/Z620/DevstralOpenHands
+
+# Start services
+./start.sh
+```
+
 ## 🔍 Debugging Tools
 
 ### Quick Health Check
@@ -34,15 +48,23 @@
 ./debug-health.sh
 ```
 
-### Simple Startup (for testing)
-```bash
-./start-simple.sh
-```
-
 ### Manual Container Start
 ```bash
 docker compose up -d
 ```
+
+## 🔧 Environment Configuration
+
+### User ID Detection
+The startup script automatically detects the current user ID:
+```bash
+export SANDBOX_USER_ID=$(id -u)
+```
+
+This ensures proper file permissions in the OpenHands sandbox environment without manual configuration.
+
+### Environment Variables
+All configuration is managed through the `.env` file. The docker-compose file uses environment variables **without default values** to ensure `.env` file values take precedence.
 
 ## 📊 New Workflow
 
@@ -96,10 +118,11 @@ curl http://localhost:11434/health
 ├── ~/.models/             # Model files in user home (shared across projects)
 │   └── devstral-q4_k_m.gguf
 ├── workspace/             # OpenHands workspace
-├── docker-compose.yml     # Service definitions
+├── docker-compose.yml     # Service definitions (GPU-accelerated)
 ├── Dockerfile            # llama.cpp container
-├── .env                  # Configuration
-├── start.sh              # Main startup script
+├── .env                  # Configuration (no default values)
+├── start.sh              # Production startup script
+├── debug-health.sh       # Health debugging tool
 ├── monitor-download.sh   # Download progress monitor
 └── monitor-health.sh     # Health status monitor
 ```
@@ -139,16 +162,12 @@ curl http://localhost:11434/health
    - Check network connectivity between containers
    - Ensure model is fully loaded
 
-### Log Analysis
+6. **User ID / Permission Issues**:
+   - Startup script automatically detects user ID with `$(id -u)`
+   - If manual deployment, ensure `SANDBOX_USER_ID` is set correctly
+   - Check file permissions in workspace directory
 
-**Normal startup sequence**:
-1. Model validation
-2. llama.cpp server startup
-3. Model loading into GPU
-4. Health check passes
-5. OpenHands connects
-
-**Common error patterns**:
-- "Model file not found" → Run download first
-- "CUDA out of memory" → Reduce GPU layers or batch size
-- "Port already in use" → Change ports in .env file
+7. **Remote Deployment Issues**:
+   - Ensure target machine has Git installed
+   - Check network connectivity for repository cloning
+   - Ensure target machine has required dependencies (Docker, NVIDIA toolkit)

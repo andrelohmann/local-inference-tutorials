@@ -1,24 +1,14 @@
-# Devstral + OpenHands Development Environment
+# Devstral + OpenHands Production Environment
 
-This project provides a complete development environment for running Devstral with OpenHands, supporting both development (CPU-only) and production (GPU-accelerated) deployments.
+This project provides a production environment for running Devstral with OpenHands on GPU-accelerated hardware.
 
 ## Important Notes
 
-⚠️ **Hardware Requirements**: The main `docker-compose.yml` file is designed for production hardware with NVIDIA GPUs. For development on machines without proper GPU support, use `docker-compose.dev.yml`.
+⚠️ **Hardware Requirements**: This configuration requires NVIDIA GPUs with proper driver support and NVIDIA Container Toolkit.
 
 ⚠️ **Workspace Configuration**: OpenHands uses the modern `SANDBOX_VOLUMES` configuration (the `WORKSPACE_*` variables are deprecated).
 
 ## Quick Start
-
-### Development (CPU-only)
-```bash
-# Use the development startup script (handles user ID automatically)
-./start-dev.sh
-
-# Or manually:
-export SANDBOX_USER_ID=$(id -u)
-docker compose -f docker-compose.dev.yml up -d
-```
 
 ### Production (GPU-accelerated)
 ```bash
@@ -37,21 +27,22 @@ docker compose up -d
 - NVIDIA Container Toolkit installed
 - Docker Compose V2
 - At least 8GB VRAM for full model loading
+- Git (for cloning the repository)
 
 ### Deployment Steps
-1. **Copy configuration to target machine**:
+1. **Clone repository on target machine**:
    ```bash
-   scp -r ./Machine/Z620/DevstralOpenHands user@target-machine:~/
+   git clone https://github.com/andrelohmann/local-inference-tutorials.git
+   cd local-inference-tutorials/Machine/Z620/DevstralOpenHands
    ```
 
-2. **On target machine, run**:
+2. **Start the services**:
    ```bash
-   cd ~/DevstralOpenHands
    ./start.sh  # User ID will be automatically detected
    ```
 
 ### User ID Detection
-The startup scripts automatically detect the current user ID using `$(id -u)` and set the `SANDBOX_USER_ID` environment variable accordingly. This ensures proper file permissions in the OpenHands sandbox environment.
+The startup script automatically detects the current user ID using `$(id -u)` and sets the `SANDBOX_USER_ID` environment variable accordingly. This ensures proper file permissions in the OpenHands sandbox environment.
 
 ## Configuration
 
@@ -83,7 +74,7 @@ The configuration follows the latest OpenHands documentation:
 - ✅ Uses `SANDBOX_VOLUMES` instead of deprecated `WORKSPACE_*` variables
 - ✅ Automatically detects `SANDBOX_USER_ID` at runtime using `$(id -u)`
 - ✅ Properly configured for Docker runtime with socket mounting
-- ✅ Separate configurations for development and production environments
+- ✅ Optimized for GPU-accelerated production environments
 
 ### Workspace Configuration
 
@@ -92,19 +83,25 @@ OpenHands uses the modern `SANDBOX_VOLUMES` approach for mounting your workspace
 ```bash
 # In .env file
 SANDBOX_VOLUMES=$PWD/workspace:/workspace:rw
-SANDBOX_USER_ID=1000
 ```
 
-This mounts your local `./workspace` directory to `/workspace` inside the container with read-write access.
+This mounts your local `./workspace` directory to `/workspace` inside the container with read-write access. The `SANDBOX_USER_ID` is automatically detected at runtime.
 
 ## File Structure
 
-- `docker-compose.yml` - Production configuration (GPU-accelerated)
-- `docker-compose.dev.yml` - Development configuration (CPU-only)
+- `docker-compose.yml` - Service configuration (GPU-accelerated)
 - `Dockerfile` - Multi-stage build for llama.cpp server
 - `.env` - Environment variables configuration
+- `start.sh` - Production startup script
+- `monitor-download.sh` - Download progress monitor
+- `monitor-health.sh` - Health status monitor
+- `debug-health.sh` - Health debugging tool
 - `workspace/` - Your working directory (mounted into OpenHands)
 - `openhands-logs/` - OpenHands logs directory
+
+### External Dependencies
+- **~/.models/** - Model storage (shared across projects)
+- **Docker & NVIDIA Container Toolkit** - Runtime dependencies
 
 ## GPU Architecture Support
 
@@ -164,196 +161,18 @@ The system provides a streamlined workflow with better user experience:
 2. **Health Status**: `./monitor-health.sh` - Service health monitoring
 3. **Container Logs**: `docker compose logs -f` - Detailed container output
 
-## Quick Start
+## Access Points
 
-```bash
-# Start everything (downloads model automatically on first run)
-./start.sh
-
-# Or manually:
-docker compose up --build
-
-# Access OpenHands interface
-http://localhost:3000
-
-# Access llama.cpp server directly
-http://localhost:11434
-```
-
-## Configuration
-
-### GPU Settings
-- **CUDA Architecture**: 61 (Pascal) - configurable via `CUDA_DOCKER_ARCH`
-- **Memory**: Automatically configured based on available VRAM
-- **Compute Mode**: Optimized for inference workloads
-
-### Model Settings
-- **Model**: Devstral (automatically downloaded)
-- **Context Length**: 128k tokens (configurable via `LLAMA_ARG_CTX_SIZE`)
-- **Concurrency**: 2 parallel streams (configurable via `LLAMA_ARG_PARALLEL`)
-- **Batch Size**: Optimized for Pascal architecture
-- **GPU Acceleration**: Partial layers on GPU (configurable via `LLAMA_ARG_N_GPU_LAYERS`)
-
-### Performance Features
-- **Flash Attention**: Enabled for faster processing
-- **Continuous Batching**: Enabled for better throughput
-- **Dual Concurrent Streams**: Support for 2 simultaneous requests
-- **Full Context Window**: 128k tokens for long-context understanding
-
-## Prerequisites
-
-- Docker with NVIDIA Container Toolkit
-- NVIDIA drivers installed
-- Sufficient disk space for model files (~4-8GB)
-- GPU with Pascal architecture support
-
-## Implementation Details
-
-### File Structure
-```
-DevstralOpenHands/
-├── docker-compose.yml          # Main orchestration file (simplified)
-├── Dockerfile                  # Custom llama.cpp build with integrated model download
-├── .env                        # Environment configuration
-├── .gitignore                  # Git ignore patterns
-├── start.sh                    # Easy startup script
-├── download-model.sh           # Manual model download script (optional)
-├── USAGE.md                    # Detailed usage guide
-├── models/                     # Model storage (auto-created)
-│   └── devstral-q4_k_m.gguf   # Downloaded automatically on first run
-├── workspace/                  # OpenHands workspace
-│   └── .gitkeep
-└── README.md                   # This file
-```
-
-### Services Configuration
-
-#### llama-cpp-server
-- **Base**: Custom Dockerfile with Pascal architecture support
-- **GPU**: NVIDIA Pascal (Compute Capability 6.1)
-- **Port**: 11434
-- **Features**: 
-  - Automatic model download on first startup
-  - Health checks
-  - Optimized for Quadro P4000/P5000
-  - CUDA acceleration
-  - Integrated startup script
-
-#### openhands
-- **Image**: Official all-hands/OpenHands container (v0.48)
-- **Runtime**: Nikolaik runtime container for enhanced compatibility
-- **Port**: 3000
-- **Integration**: Configured to use llama-cpp-server
-- **Features**:
-  - Web-based interface
-  - Code generation and debugging
-  - Docker integration
-  - Full event logging
-  - Host network access for containerized workflows
-
-### Key Features
-
-1. **Pascal Architecture Optimization**
-   - CUDA_DOCKER_ARCH=61 for optimal performance
-   - Memory-efficient configuration
-   - GPU layer distribution optimization
-
-2. **Streamlined Model Management**
-   - Downloads Devstral model automatically on first container start
-   - Validates model integrity
-   - Persistent storage in mounted volume
-   - No separate downloader service needed
-
-3. **Simplified Service Integration**
-   - Two-service architecture instead of three
-   - Health checks ensure proper startup sequence
-   - Network isolation with inter-service communication
-   - Shared volumes for model and workspace data
-
-4. **Development-Ready**
-   - One-command startup
-   - Easy debugging and log access
-   - Configurable parameters
-
-## OpenHands Runtime Requirements
-
-This setup uses the official OpenHands v0.48 configuration with the following components:
-
-### Required Images
-- **OpenHands Main**: `docker.all-hands.dev/all-hands-ai/openhands:0.48`
-- **Runtime Container**: `docker.all-hands.dev/all-hands-ai/runtime:0.48-nikolaik`
-
-### Configuration Features
-- **Event Logging**: Full event logging enabled (`LOG_ALL_EVENTS=true`)
-- **Runtime Container**: Uses nikolaik runtime for enhanced compatibility
-- **Host Integration**: Proper host network access for containerized workflows
-- **Docker Socket**: Mounted for container management within OpenHands
-- **Config Persistence**: OpenHands configuration persisted in `~/.openhands`
+- **OpenHands Interface**: http://localhost:3000
+- **llama.cpp API**: http://localhost:11434
+- **Health Check**: http://localhost:11434/health
 
 ## Implementation Status
 
-### ✅ Phase 1: llama.cpp Container Setup
+### ✅ Complete Setup
 - [x] Custom Dockerfile with Pascal optimization
-- [x] Integrated model download capability in container startup
-- [x] Server mode configuration
-- [x] Health checks and monitoring
-
-### ✅ Phase 2: OpenHands Integration
-- [x] Container configuration
-- [x] Network connectivity setup
-- [x] Shared volumes for model access
-- [x] Service communication configuration
-
-### ✅ Phase 3: Docker Compose Orchestration
-- [x] Streamlined two-service setup
-- [x] Service dependencies with health checks
-- [x] Shared networks and volumes
-- [x] Environment configuration
-
-### ✅ Phase 4: Deployment and Testing
-- [x] One-command startup
-- [x] Integrated health checks
-- [x] Documentation
-- [x] Usage guide
-
-## Deployment Automation
-
-### Automated Deployment Script
-
-Use the `deploy.sh` script to automatically deploy the configuration to your target machine:
-
-```bash
-# Deploy to target machine
-./deploy.sh user@target-machine
-
-# Deploy to custom path
-./deploy.sh -p /opt/devstral user@production-server
-```
-
-The deployment script will:
-1. ✅ Test SSH connection to target machine
-2. 📁 Copy all configuration files
-3. 🔐 Set proper file permissions
-4. 🔍 Check target machine requirements (Docker, NVIDIA toolkit)
-5. 📋 Provide next steps for startup
-
-### Manual Deployment
-
-If you prefer manual deployment:
-
-```bash
-# Copy configuration to target machine
-scp -r ./Machine/Z620/DevstralOpenHands user@target-machine:~/
-
-# SSH to target machine
-ssh user@target-machine
-
-# Navigate to deployment directory
-cd ~/DevstralOpenHands
-
-# Set permissions
-chmod +x start.sh start-dev.sh monitor-*.sh
-
-# Start services
-./start.sh
-```
+- [x] Integrated model download capability
+- [x] Service health checks and monitoring
+- [x] OpenHands integration with modern configuration
+- [x] Streamlined Docker Compose orchestration
+- [x] One-command startup with documentation
