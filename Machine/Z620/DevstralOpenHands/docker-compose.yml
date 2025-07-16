@@ -53,6 +53,11 @@ services:
       - LLM_API_KEY=dummy
       - LLM_EMBEDDING_MODEL=local
       - LLM_EMBEDDING_BASE_URL=${OPENHANDS_LLM_BASE_URL}
+      - LLM_API_VERSION=${LLM_API_VERSION}
+      - LLM_CUSTOM_LLM_PROVIDER=${LLM_CUSTOM_LLM_PROVIDER}
+      - LLM_DROP_PARAMS=${LLM_DROP_PARAMS}
+      - DEFAULT_LLM_CONFIG={"model":"${OPENHANDS_LLM_MODEL}","base_url":"${OPENHANDS_LLM_BASE_URL}","api_key":"dummy","api_version":"${LLM_API_VERSION}","custom_llm_provider":"${LLM_CUSTOM_LLM_PROVIDER}","drop_params":${LLM_DROP_PARAMS}}
+      - DEFAULT_EMBEDDING_CONFIG={"model":"local","base_url":"${OPENHANDS_LLM_BASE_URL}","api_key":"dummy"}
     ports:
       - "${OPENHANDS_PORT}:3000"
     volumes:
