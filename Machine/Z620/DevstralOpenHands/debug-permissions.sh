@@ -39,5 +39,21 @@ docker compose logs --tail=20 openhands 2>/dev/null || echo "No logs available"
 echo ""
 echo "🚀 Quick Fix Commands:"
 echo "   • Recreate directories: mkdir -p ~/.openhands workspace openhands-logs"
-echo "   • Fix permissions: chmod 755 ~/.openhands workspace openhands-logs"
+echo "   • Fix permissions: sudo chown -R $(id -u):$(id -g) ~/.openhands workspace openhands-logs"
+echo "   • Alternative fix: sudo chmod 755 ~/.openhands workspace openhands-logs"
 echo "   • Restart containers: docker compose down && docker compose up -d"
+echo "   • Test permissions: ./start.sh"
+
+echo ""
+echo "🔧 Running Quick Fix (if needed):"
+echo "Would you like to run the permission fix? (y/n)"
+read -r response
+if [[ "$response" =~ ^[Yy]$ ]]; then
+    echo "Running permission fix..."
+    mkdir -p ~/.openhands workspace openhands-logs
+    sudo chown -R $(id -u):$(id -g) ~/.openhands workspace openhands-logs 2>/dev/null || echo "chown failed, trying chmod..."
+    sudo chmod 755 ~/.openhands workspace openhands-logs 2>/dev/null || echo "chmod failed, manual intervention needed"
+    echo "✅ Permission fix attempted"
+else
+    echo "Skipping permission fix"
+fi

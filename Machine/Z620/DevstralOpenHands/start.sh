@@ -55,14 +55,18 @@ mkdir -p ~/.models workspace openhands-logs
 # Create OpenHands configuration directory with proper permissions
 echo "🔧 Setting up OpenHands directories..."
 mkdir -p ~/.openhands
-chmod 755 ~/.openhands
 
-# Ensure current user owns the directories
-chown -R $(id -u):$(id -g) ~/.openhands 2>/dev/null || true
-chown -R $(id -u):$(id -g) workspace 2>/dev/null || true
-chown -R $(id -u):$(id -g) openhands-logs 2>/dev/null || true
+# Set permissions (allow failures if already correct)
+chmod 755 ~/.openhands 2>/dev/null || echo "   ℹ️  ~/.openhands permissions already set or cannot be changed"
+chmod 755 workspace 2>/dev/null || echo "   ℹ️  workspace permissions already set or cannot be changed"
+chmod 755 openhands-logs 2>/dev/null || echo "   ℹ️  openhands-logs permissions already set or cannot be changed"
 
-echo "✅ Directory permissions set for user ID: $(id -u)"
+# Ensure current user owns the directories (allow failures)
+chown -R $(id -u):$(id -g) ~/.openhands 2>/dev/null || echo "   ℹ️  ~/.openhands ownership already correct or cannot be changed"
+chown -R $(id -u):$(id -g) workspace 2>/dev/null || echo "   ℹ️  workspace ownership already correct or cannot be changed"
+chown -R $(id -u):$(id -g) openhands-logs 2>/dev/null || echo "   ℹ️  openhands-logs ownership already correct or cannot be changed"
+
+echo "✅ Directory permissions configured for user ID: $(id -u)"
 
 # Verify directory structure
 echo "📋 Directory structure verification:"
@@ -72,21 +76,35 @@ echo "   • openhands-logs: $(ls -ld openhands-logs | awk '{print $1, $3, $4}')
 
 # Test write permissions
 echo "🔍 Testing write permissions..."
+PERMISSION_OK=true
+
 if ! touch ~/.openhands/test-write 2>/dev/null; then
-    echo "❌ Error: Cannot write to ~/.openhands directory"
-    echo "   Run: chmod 755 ~/.openhands && chown $(id -u):$(id -g) ~/.openhands"
-    exit 1
+    echo "   ⚠️  Warning: Cannot write to ~/.openhands directory"
+    echo "      Current permissions: $(ls -ld ~/.openhands 2>/dev/null || echo 'unknown')"
+    echo "      Try: sudo chown -R $(id -u):$(id -g) ~/.openhands"
+    PERMISSION_OK=false
+else
+    rm -f ~/.openhands/test-write
+    echo "   ✅ ~/.openhands write test passed"
 fi
-rm -f ~/.openhands/test-write
 
 if ! touch workspace/test-write 2>/dev/null; then
-    echo "❌ Error: Cannot write to workspace directory"
-    echo "   Run: chmod 755 workspace && chown $(id -u):$(id -g) workspace"
-    exit 1
+    echo "   ⚠️  Warning: Cannot write to workspace directory"
+    echo "      Current permissions: $(ls -ld workspace 2>/dev/null || echo 'unknown')"
+    echo "      Try: sudo chown -R $(id -u):$(id -g) workspace"
+    PERMISSION_OK=false
+else
+    rm -f workspace/test-write
+    echo "   ✅ workspace write test passed"
 fi
-rm -f workspace/test-write
 
-echo "✅ Write permissions verified"
+if [ "$PERMISSION_OK" = "true" ]; then
+    echo "✅ Write permissions verified"
+else
+    echo "⚠️  Some permission issues detected, but continuing..."
+    echo "   OpenHands may have trouble creating session files"
+    echo "   Use './debug-permissions.sh' for detailed troubleshooting"
+fi
 
 # Check if model exists
 MODEL_PATH="${MODEL_DIR}/${MODEL_NAME}"
