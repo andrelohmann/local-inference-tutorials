@@ -59,7 +59,7 @@ services:
       - ./openhands-logs:/logs
       - ./workspace:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
-      - ~/.openhands:/home/openhands/.openhands
+      - ~/.openhands:/.openhands
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
