@@ -90,18 +90,41 @@ echo "⏳ Waiting for services to become ready..."
 
 # Wait for llama.cpp server to be healthy
 echo "   • Waiting for llama.cpp server..."
+TIMEOUT=300  # 5 minute timeout
+START_TIME=$(date +%s)
+
 while true; do
+    CURRENT_TIME=$(date +%s)
+    ELAPSED=$((CURRENT_TIME - START_TIME))
+    
+    if [ $ELAPSED -gt $TIMEOUT ]; then
+        echo "   ❌ Timeout waiting for llama.cpp server (${TIMEOUT}s)"
+        echo "   Check logs: docker compose logs llama-cpp-server"
+        exit 1
+    fi
+    
+    # Check if container is running
     if docker compose ps --services --filter "status=running" | grep -q "llama-cpp-server"; then
-        HEALTH_STATUS=$(docker compose ps --format "table {{.Service}}\t{{.Status}}" | grep "llama-cpp-server" | awk '{print $2}')
+        # Try to get health status from docker inspect
+        HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' llama-cpp-devstral 2>/dev/null || echo "unknown")
         
-        if [[ "$HEALTH_STATUS" == *"healthy"* ]]; then
+        # If health check is available and healthy, we're good
+        if [[ "$HEALTH_STATUS" == "healthy" ]]; then
             echo "   ✅ llama.cpp server is ready!"
             break
+        # If no health check or health check not yet available, try API directly
+        elif [[ "$HEALTH_STATUS" == "unknown" ]] || [[ "$HEALTH_STATUS" == "none" ]]; then
+            if docker exec llama-cpp-devstral curl -sf http://localhost:11434/health > /dev/null 2>&1; then
+                echo "   ✅ llama.cpp server is responding!"
+                break
+            else
+                echo "   ⏳ llama.cpp server starting up... (${ELAPSED}s)"
+            fi
         else
-            echo "   ⏳ llama.cpp server status: $HEALTH_STATUS"
+            echo "   ⏳ llama.cpp server health: $HEALTH_STATUS (${ELAPSED}s)"
         fi
     else
-        echo "   ⏳ Starting llama.cpp server..."
+        echo "   ⏳ Starting llama.cpp server... (${ELAPSED}s)"
     fi
     
     sleep 5
@@ -109,18 +132,29 @@ done
 
 # Wait for OpenHands to be healthy
 echo "   • Waiting for OpenHands..."
+TIMEOUT=120  # 2 minute timeout for OpenHands
+START_TIME=$(date +%s)
+
 while true; do
+    CURRENT_TIME=$(date +%s)
+    ELAPSED=$((CURRENT_TIME - START_TIME))
+    
+    if [ $ELAPSED -gt $TIMEOUT ]; then
+        echo "   ❌ Timeout waiting for OpenHands (${TIMEOUT}s)"
+        echo "   Check logs: docker compose logs openhands"
+        exit 1
+    fi
+    
     if docker compose ps --services --filter "status=running" | grep -q "openhands"; then
-        HEALTH_STATUS=$(docker compose ps --format "table {{.Service}}\t{{.Status}}" | grep "openhands" | awk '{print $2}')
-        
-        if [[ "$HEALTH_STATUS" == *"healthy"* ]] || [[ "$HEALTH_STATUS" == *"running"* ]]; then
+        # OpenHands doesn't have health checks, so just check if it's running and responding
+        if docker exec openhands curl -sf http://localhost:3000 > /dev/null 2>&1; then
             echo "   ✅ OpenHands is ready!"
             break
         else
-            echo "   ⏳ OpenHands status: $HEALTH_STATUS"
+            echo "   ⏳ OpenHands starting up... (${ELAPSED}s)"
         fi
     else
-        echo "   ⏳ Starting OpenHands..."
+        echo "   ⏳ Starting OpenHands... (${ELAPSED}s)"
     fi
     
     sleep 5
