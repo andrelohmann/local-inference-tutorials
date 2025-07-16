@@ -29,6 +29,7 @@ echo "  • Model: ${MODEL_NAME}"
 echo "  • llama.cpp Port: ${LLAMA_ARG_PORT}"
 echo "  • OpenHands Version: ${OPENHANDS_VERSION}"
 echo "  • OpenHands Port: ${OPENHANDS_PORT}"
+echo "  • OpenWebUI Port: ${OPENWEBUI_PORT}"
 echo "  • User ID: ${SANDBOX_USER_ID}"
 echo "  • Context Window: ${LLAMA_ARG_CTX_SIZE} tokens"
 echo "  • GPU Layers: ${LLAMA_ARG_N_GPU_LAYERS}"
@@ -50,7 +51,7 @@ fi
 
 # Create necessary directories
 echo "📁 Creating required directories..."
-mkdir -p ~/.models workspace openhands-logs
+mkdir -p ~/.models workspace openhands-logs openwebui-data
 
 # Create OpenHands configuration directory with proper permissions
 echo "🔧 Setting up OpenHands directories..."
@@ -60,11 +61,13 @@ mkdir -p ~/.openhands
 chmod 755 ~/.openhands 2>/dev/null || echo "   ℹ️  ~/.openhands permissions already set or cannot be changed"
 chmod 755 workspace 2>/dev/null || echo "   ℹ️  workspace permissions already set or cannot be changed"
 chmod 755 openhands-logs 2>/dev/null || echo "   ℹ️  openhands-logs permissions already set or cannot be changed"
+chmod 755 openwebui-data 2>/dev/null || echo "   ℹ️  openwebui-data permissions already set or cannot be changed"
 
 # Ensure current user owns the directories (allow failures)
 chown -R $(id -u):$(id -g) ~/.openhands 2>/dev/null || echo "   ℹ️  ~/.openhands ownership already correct or cannot be changed"
 chown -R $(id -u):$(id -g) workspace 2>/dev/null || echo "   ℹ️  workspace ownership already correct or cannot be changed"
 chown -R $(id -u):$(id -g) openhands-logs 2>/dev/null || echo "   ℹ️  openhands-logs ownership already correct or cannot be changed"
+chown -R $(id -u):$(id -g) openwebui-data 2>/dev/null || echo "   ℹ️  openwebui-data ownership already correct or cannot be changed"
 
 echo "✅ Directory permissions configured for user ID: $(id -u)"
 
@@ -73,6 +76,7 @@ echo "📋 Directory structure verification:"
 echo "   • ~/.openhands: $(ls -ld ~/.openhands | awk '{print $1, $3, $4}')"
 echo "   • workspace: $(ls -ld workspace | awk '{print $1, $3, $4}')"
 echo "   • openhands-logs: $(ls -ld openhands-logs | awk '{print $1, $3, $4}')"
+echo "   • openwebui-data: $(ls -ld openwebui-data | awk '{print $1, $3, $4}')"
 
 # Test write permissions
 echo "🔍 Testing write permissions..."
@@ -223,10 +227,41 @@ while true; do
     sleep 5
 done
 
+# Wait for OpenWebUI to be healthy
+echo "   • Waiting for OpenWebUI..."
+TIMEOUT=60  # 1 minute timeout for OpenWebUI
+START_TIME=$(date +%s)
+
+while true; do
+    CURRENT_TIME=$(date +%s)
+    ELAPSED=$((CURRENT_TIME - START_TIME))
+    
+    if [ $ELAPSED -gt $TIMEOUT ]; then
+        echo "   ❌ Timeout waiting for OpenWebUI (${TIMEOUT}s)"
+        echo "   Check logs: docker compose logs openwebui"
+        break  # Continue even if OpenWebUI fails
+    fi
+    
+    if docker compose ps --services --filter "status=running" | grep -q "openwebui"; then
+        # Check if OpenWebUI is responding
+        if docker exec openwebui curl -sf http://localhost:8080 > /dev/null 2>&1; then
+            echo "   ✅ OpenWebUI is ready!"
+            break
+        else
+            echo "   ⏳ OpenWebUI starting up... (${ELAPSED}s)"
+        fi
+    else
+        echo "   ⏳ Starting OpenWebUI... (${ELAPSED}s)"
+    fi
+    
+    sleep 5
+done
+
 echo ""
 echo "🎉 Setup Complete!"
 echo "=================================================="
 echo "🌐 OpenHands Interface: http://localhost:${OPENHANDS_PORT}"
+echo "🌐 OpenWebUI Interface: http://localhost:${OPENWEBUI_PORT}"
 echo "🔗 llama.cpp Server: http://localhost:${LLAMA_ARG_PORT}"
 echo ""
 echo "📚 Available tools:"
@@ -236,7 +271,8 @@ echo "   • docker compose logs -f - Full container logs"
 echo ""
 echo "📝 User Configuration:"
 echo "   • User ID: $(id -u) (automatically set in containers)"
-echo "   • OpenHands data: ~/.openhands (host) -> /home/openhands/.openhands (container)"
+echo "   • OpenHands data: ~/.openhands (host) -> /.openhands (container)"
+echo "   • OpenWebUI data: ./openwebui-data (host) -> /app/backend/data (container)"
 echo "   • Workspace: ./workspace (host) -> /workspace (container)"
 echo ""
 echo "🛑 To stop: docker compose down"

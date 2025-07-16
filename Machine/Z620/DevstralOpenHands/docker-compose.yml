@@ -57,10 +57,10 @@ services:
       #- LLM_EMBEDDING_MODEL=local
       #- LLM_EMBEDDING_BASE_URL=${OPENHANDS_LLM_BASE_URL}
       - LLM_API_VERSION=${LLM_API_VERSION}
-      - LLM_CUSTOM_LLM_PROVIDER=${LLM_CUSTOM_LLM_PROVIDER}
+      #- LLM_CUSTOM_LLM_PROVIDER=${LLM_CUSTOM_LLM_PROVIDER}
       - LLM_DROP_PARAMS=${LLM_DROP_PARAMS}
-      - DEFAULT_LLM_CONFIG={"model":"${OPENHANDS_LLM_MODEL}","base_url":"${OPENHANDS_LLM_BASE_URL}","api_key":"dummy","api_version":"${LLM_API_VERSION}","custom_llm_provider":"${LLM_CUSTOM_LLM_PROVIDER}","drop_params":${LLM_DROP_PARAMS}}
-      - DEFAULT_EMBEDDING_CONFIG={"model":"local","base_url":"${OPENHANDS_LLM_BASE_URL}","api_key":"dummy"}
+      #- DEFAULT_LLM_CONFIG={"model":"${OPENHANDS_LLM_MODEL}","base_url":"${OPENHANDS_LLM_BASE_URL}","api_key":"dummy","api_version":"${LLM_API_VERSION}","custom_llm_provider":"${LLM_CUSTOM_LLM_PROVIDER}","drop_params":${LLM_DROP_PARAMS}}
+      #- DEFAULT_EMBEDDING_CONFIG={"model":"local","base_url":"${OPENHANDS_LLM_BASE_URL}","api_key":"dummy"}
     ports:
       - "${OPENHANDS_PORT}:3000"
     volumes:
@@ -70,6 +70,28 @@ services:
       - ~/.openhands:/.openhands
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      llama-cpp-server:
+        condition: service_healthy
+    networks:
+      - devstral-network
+
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:${OPENWEBUI_VERSION}
+    container_name: openwebui
+    restart: unless-stopped
+    environment:
+      - OLLAMA_BASE_URL=${OPENWEBUI_OLLAMA_BASE_URL}
+      - WEBUI_AUTH=false
+      - WEBUI_NAME=Devstral WebUI
+      - WEBUI_URL=http://localhost:${OPENWEBUI_PORT}
+      - ENABLE_SIGNUP=true
+      - DEFAULT_MODELS=devstral-small-2507
+      - DEFAULT_USER_ROLE=admin
+    ports:
+      - "${OPENWEBUI_PORT}:8080"
+    volumes:
+      - ./openwebui-data:/app/backend/data
     depends_on:
       llama-cpp-server:
         condition: service_healthy
