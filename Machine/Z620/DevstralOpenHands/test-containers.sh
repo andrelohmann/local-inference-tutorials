@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Direct llama.cpp container testing script
+# Direct llama.cpp container     echo "🚀 Starting Direct llama.cpp + OpenWebUI Test"
+    echo "=============================================="sting script
 # This runs the llama.cpp container directly without docker-compose for parameter testing
 
 set -e
@@ -45,8 +46,11 @@ start_container() {
 
 # Fixed configuration values
 CONTAINER_NAME="llama-cpp-test"
+OPENWEBUI_CONTAINER_NAME="openwebui-test"
 HOST_PORT="11434"
 CONTAINER_PORT="11434"
+OPENWEBUI_HOST_PORT="8080"
+OPENWEBUI_CONTAINER_PORT="8080"
 MODEL_DIR="$HOME/.models"
 MODEL_FILE="devstral-q4_k_m.gguf"
 MODEL_PATH="$MODEL_DIR/$MODEL_FILE"
@@ -71,8 +75,10 @@ NVIDIA_VISIBLE_DEVICES="all"
 NVIDIA_DRIVER_CAPABILITIES="compute,utility"
 
 echo "📋 Configuration:"
-echo "  • Container: $CONTAINER_NAME"
-echo "  • Port: $HOST_PORT"
+echo "  • llama.cpp Container: $CONTAINER_NAME"
+echo "  • OpenWebUI Container: $OPENWEBUI_CONTAINER_NAME"
+echo "  • llama.cpp Port: $HOST_PORT"
+echo "  • OpenWebUI Port: $OPENWEBUI_HOST_PORT"
 echo "  • Model: $MODEL_FILE"
 echo "  • Model Path: $MODEL_PATH"
 echo "  • GPU Layers: $LLAMA_ARG_N_GPU_LAYERS"
@@ -90,12 +96,22 @@ fi
 
 echo "✅ Model file found: $MODEL_PATH"
 
-# Stop and remove existing container if it exists
+# Stop and remove existing containers if they exist
 if docker ps -a --format '{{.Names}}' | grep -q "^$CONTAINER_NAME$"; then
-    echo "🔄 Stopping existing container..."
+    echo "🔄 Stopping existing llama.cpp container..."
     docker stop $CONTAINER_NAME >/dev/null 2>&1 || true
     docker rm $CONTAINER_NAME >/dev/null 2>&1 || true
 fi
+
+if docker ps -a --format '{{.Names}}' | grep -q "^$OPENWEBUI_CONTAINER_NAME$"; then
+    echo "🔄 Stopping existing OpenWebUI container..."
+    docker stop $OPENWEBUI_CONTAINER_NAME >/dev/null 2>&1 || true
+    docker rm $OPENWEBUI_CONTAINER_NAME >/dev/null 2>&1 || true
+fi
+
+# Remove OpenWebUI persistent volume to ensure fresh configuration
+echo "🧹 Cleaning OpenWebUI persistent volume..."
+docker volume rm openwebui-test-data >/dev/null 2>&1 || true
 
 # Build the image first
 echo "🔧 Building llama.cpp image..."
@@ -164,9 +180,58 @@ if [ $attempt -eq $max_attempts ]; then
 fi
 
 echo ""
-echo "🎉 Container started successfully!"
-echo "=========================================="
-echo "🌐 Server URL: http://localhost:$HOST_PORT"
+echo "🚀 Starting OpenWebUI container..."
+echo "===================================="
+
+# Start OpenWebUI container
+docker run -d \
+    --name $OPENWEBUI_CONTAINER_NAME \
+    -p $OPENWEBUI_HOST_PORT:$OPENWEBUI_CONTAINER_PORT \
+    -e WEBUI_AUTH=false \
+    -e ENABLE_SIGNUP=false \
+    -e ENABLE_LOGIN_FORM=false \
+    -e ENABLE_PERSISTENT_CONFIG=false \
+    -e DEFAULT_MODELS="$MODEL_ALIAS" \
+    -e DEFAULT_USER_ROLE=admin \
+    -e OLLAMA_BASE_URL="http://host.docker.internal:$HOST_PORT" \
+    -e OPENAI_API_BASE_URL="http://host.docker.internal:$HOST_PORT/v1" \
+    -e OPENAI_API_KEY="test-key" \
+    -e RESET_CONFIG_ON_START=true \
+    -e ENABLE_OLLAMA_API=true \
+    -e ENABLE_OPENAI_API=true \
+    -e WEBUI_NAME="llama.cpp Test Interface" \
+    -e WEBUI_URL="http://localhost:$OPENWEBUI_HOST_PORT" \
+    -v openwebui-test-data:/app/backend/data \
+    --add-host=host.docker.internal:host-gateway \
+    ghcr.io/open-webui/open-webui:latest
+
+echo "⏳ Waiting for OpenWebUI to be ready..."
+max_attempts=30
+attempt=0
+
+while [ $attempt -lt $max_attempts ]; do
+    if curl -s http://localhost:$OPENWEBUI_HOST_PORT >/dev/null 2>&1; then
+        echo "✅ OpenWebUI is ready!"
+        break
+    fi
+    
+    attempt=$((attempt + 1))
+    echo "   Attempt $attempt/$max_attempts..."
+    sleep 2
+done
+
+if [ $attempt -eq $max_attempts ]; then
+    echo "❌ OpenWebUI failed to start within timeout"
+    echo "📋 OpenWebUI logs:"
+    docker logs $OPENWEBUI_CONTAINER_NAME
+    echo "⚠️  Continuing with llama.cpp only..."
+fi
+
+echo ""
+echo "🎉 Containers started successfully!"
+echo "===================================="
+echo "🌐 llama.cpp Server: http://localhost:$HOST_PORT"
+echo "🌐 OpenWebUI Interface: http://localhost:$OPENWEBUI_HOST_PORT"
 echo "🔗 Health Check: http://localhost:$HOST_PORT/health"
 echo "📋 Models API: http://localhost:$HOST_PORT/v1/models"
 echo ""
@@ -187,8 +252,9 @@ echo "                          -H 'Content-Type: application/json' \\"
 echo "                          -d '{\"model\":\"$MODEL_ALIAS\",\"prompt\":\"Hello, my name is\",\"stream\":false}'"
 echo ""
 echo "📊 Monitor commands:"
-echo "   • Container logs: docker logs -f $CONTAINER_NAME"
-echo "   • Container stats: docker stats $CONTAINER_NAME"
+echo "   • llama.cpp logs: docker logs -f $CONTAINER_NAME"
+echo "   • OpenWebUI logs: docker logs -f $OPENWEBUI_CONTAINER_NAME"
+echo "   • Container stats: docker stats $CONTAINER_NAME $OPENWEBUI_CONTAINER_NAME"
 echo "   • GPU usage: nvidia-smi"
 echo ""
     echo "🛑 To stop: ./test-containers.sh down"
@@ -196,41 +262,108 @@ echo ""
 
 # Function to stop container
 stop_container() {
-    echo "🛑 Stopping llama.cpp Container"
-    echo "==============================="
+    echo "🛑 Stopping llama.cpp + OpenWebUI Containers"
+    echo "============================================"
     
     CONTAINER_NAME="llama-cpp-test"
+    OPENWEBUI_CONTAINER_NAME="openwebui-test"
     
-    # Stop and remove container
+    # Stop and remove llama.cpp container
     if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
-        echo "🔄 Stopping container: $CONTAINER_NAME"
+        echo "🔄 Stopping llama.cpp container: $CONTAINER_NAME"
         docker stop $CONTAINER_NAME
     else
-        echo "ℹ️  Container $CONTAINER_NAME is not running"
+        echo "ℹ️  llama.cpp container $CONTAINER_NAME is not running"
     fi
 
     if docker ps -aq --filter "name=$CONTAINER_NAME" | grep -q .; then
-        echo "🗑️  Removing container: $CONTAINER_NAME"
+        echo "🗑️  Removing llama.cpp container: $CONTAINER_NAME"
         docker rm $CONTAINER_NAME
     else
-        echo "ℹ️  Container $CONTAINER_NAME does not exist"
+        echo "ℹ️  llama.cpp container $CONTAINER_NAME does not exist"
     fi
+
+    # Stop and remove OpenWebUI container
+    if docker ps -q --filter "name=$OPENWEBUI_CONTAINER_NAME" | grep -q .; then
+        echo "🔄 Stopping OpenWebUI container: $OPENWEBUI_CONTAINER_NAME"
+        docker stop $OPENWEBUI_CONTAINER_NAME
+    else
+        echo "ℹ️  OpenWebUI container $OPENWEBUI_CONTAINER_NAME is not running"
+    fi
+
+    if docker ps -aq --filter "name=$OPENWEBUI_CONTAINER_NAME" | grep -q .; then
+        echo "🗑️  Removing OpenWebUI container: $OPENWEBUI_CONTAINER_NAME"
+        docker rm $OPENWEBUI_CONTAINER_NAME
+    else
+        echo "ℹ️  OpenWebUI container $OPENWEBUI_CONTAINER_NAME does not exist"
+    fi
+
+    # Remove OpenWebUI persistent volume to ensure fresh configuration
+    echo "🧹 Cleaning OpenWebUI persistent volume..."
+    docker volume rm openwebui-test-data >/dev/null 2>&1 || true
     
-    echo "✅ Container stopped and removed!"
+    echo "✅ Containers stopped and removed!"
 }
 
 # Function to show container logs
 show_logs() {
     CONTAINER_NAME="llama-cpp-test"
+    OPENWEBUI_CONTAINER_NAME="openwebui-test"
     
-    if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
-        echo "📋 Container logs for $CONTAINER_NAME:"
-        echo "======================================"
-        docker logs -f $CONTAINER_NAME
-    else
-        echo "❌ Container $CONTAINER_NAME is not running"
-        exit 1
-    fi
+    echo "📋 Container Logs"
+    echo "================="
+    echo ""
+    echo "Which container logs would you like to see?"
+    echo "  1) llama.cpp ($CONTAINER_NAME)"
+    echo "  2) OpenWebUI ($OPENWEBUI_CONTAINER_NAME)"
+    echo "  3) Both (split screen)"
+    echo ""
+    read -p "Enter choice (1-3): " choice
+    
+    case $choice in
+        1)
+            if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
+                echo "📋 llama.cpp container logs:"
+                echo "============================"
+                docker logs -f $CONTAINER_NAME
+            else
+                echo "❌ llama.cpp container $CONTAINER_NAME is not running"
+                exit 1
+            fi
+            ;;
+        2)
+            if docker ps -q --filter "name=$OPENWEBUI_CONTAINER_NAME" | grep -q .; then
+                echo "📋 OpenWebUI container logs:"
+                echo "============================"
+                docker logs -f $OPENWEBUI_CONTAINER_NAME
+            else
+                echo "❌ OpenWebUI container $OPENWEBUI_CONTAINER_NAME is not running"
+                exit 1
+            fi
+            ;;
+        3)
+            if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q . && docker ps -q --filter "name=$OPENWEBUI_CONTAINER_NAME" | grep -q .; then
+                echo "📋 Both container logs (press Ctrl+C to exit):"
+                echo "=============================================="
+                docker logs --tail=20 $CONTAINER_NAME
+                echo ""
+                echo "--- OpenWebUI logs ---"
+                docker logs --tail=20 $OPENWEBUI_CONTAINER_NAME
+                echo ""
+                echo "Following both logs..."
+                docker logs -f $CONTAINER_NAME &
+                docker logs -f $OPENWEBUI_CONTAINER_NAME &
+                wait
+            else
+                echo "❌ One or both containers are not running"
+                exit 1
+            fi
+            ;;
+        *)
+            echo "❌ Invalid choice"
+            exit 1
+            ;;
+    esac
 }
 
 # Function to show container status
