@@ -78,7 +78,8 @@ services:
       - devstral-network
 
   openwebui:
-    image: ghcr.io/open-webui/open-webui:${OPENWEBUI_VERSION}
+    #image: ghcr.io/open-webui/open-webui:${OPENWEBUI_VERSION}
+    image: ghcr.io/open-webui/open-webui:latest
     container_name: openwebui
     restart: unless-stopped
     environment:
