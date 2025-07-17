@@ -31,9 +31,16 @@ show_usage() {
     echo "  • Container Name: openhands-test"
     echo "  • Port: 3000"
     echo "  • Workspace: ~/workspace"
+    echo "  • OpenHands Config: ~/.openhands"
     echo "  • Docker Socket: /var/run/docker.sock"
-    echo "  • User ID: $(id -u)"
-    echo "  • Group ID: $(id -g)"
+    echo "  • Image: docker.all-hands.dev/all-hands-ai/openhands:0.49"
+    echo "  • Runtime: docker.all-hands.dev/all-hands-ai/runtime:0.49-nikolaik"
+    echo ""
+    echo "LLM Configuration:"
+    echo "  • Model: openai/devstral-2507"
+    echo "  • Base URL: http://host.docker.internal:11434"
+    echo "  • API Version: v1"
+    echo "  • Auto-configured for local llama.cpp server"
     echo ""
     echo "Web Interface:"
     echo "  • URL: http://localhost:3000"
@@ -49,12 +56,8 @@ start_container() {
     echo "==============================="
     
     CONTAINER_NAME="openhands-test"
-    
-    # Build the container if it doesn't exist
-    if ! docker images | grep -q "openhands-devstral"; then
-        echo "🔨 Building OpenHands container..."
-        docker build -t openhands-devstral .
-    fi
+    OPENHANDS_IMAGE="docker.all-hands.dev/all-hands-ai/openhands:0.49"
+    RUNTIME_IMAGE="docker.all-hands.dev/all-hands-ai/runtime:0.49-nikolaik"
     
     # Check if container is already running
     if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
@@ -69,32 +72,48 @@ start_container() {
         docker rm $CONTAINER_NAME
     fi
 
-    # Create workspace directory if it doesn't exist
+    # Create required directories
     mkdir -p ~/workspace
+    mkdir -p ~/.openhands
 
     echo "🔄 Starting OpenHands container..."
     echo "📝 Container Configuration:"
+    echo "  • Image: $OPENHANDS_IMAGE"
+    echo "  • Runtime: $RUNTIME_IMAGE"
     echo "  • Port: 3000"
     echo "  • Workspace: ~/workspace"
-    echo "  • User ID: $(id -u)"
-    echo "  • Group ID: $(id -g)"
+    echo "  • Config: ~/.openhands"
+    echo "  • LLM Model: openai/devstral-2507"
+    echo "  • LLM Base URL: http://host.docker.internal:11434"
     echo "  • Docker Socket: Mounted"
     echo ""
     
-    # Start container with fixed parameters
+    # Pull the latest image
+    echo "📦 Pulling OpenHands image..."
+    docker pull $OPENHANDS_IMAGE
+    
+    # Start container with official OpenHands parameters
     CONTAINER_ID=$(docker run -d \
-        --name openhands-test \
-        -p 3000:3000 \
-        -v ~/workspace:/workspace \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        -e PUID=$(id -u) \
-        -e PGID=$(id -g) \
+        --name $CONTAINER_NAME \
+        --pull=always \
+        -e SANDBOX_RUNTIME_CONTAINER_IMAGE=$RUNTIME_IMAGE \
+        -e LOG_ALL_EVENTS=true \
+        -e LLM_MODEL=openai/devstral-2507 \
+        -e LLM_BASE_URL=http://host.docker.internal:11434 \
+        -e LLM_API_KEY=dummy \
+        -e LLM_API_VERSION=v1 \
+        -e LLM_DROP_PARAMS=true \
         -e WORKSPACE_BASE=/workspace \
-        openhands-devstral)
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v ~/.openhands:/.openhands \
+        -v ~/workspace:/workspace \
+        -p 3000:3000 \
+        --add-host host.docker.internal:host-gateway \
+        $OPENHANDS_IMAGE)
     
     echo "✅ Container started with ID: $CONTAINER_ID"
-    echo "⏳ Waiting 10 seconds for container to initialize..."
-    sleep 10
+    echo "⏳ Waiting 15 seconds for container to initialize..."
+    sleep 15
     
     # Check if container is still running after startup
     if ! docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
@@ -144,12 +163,18 @@ start_container() {
     
     echo ""
     echo "🎉 OpenHands container is running successfully!"
-    echo "  • Container: openhands-test"
+    echo "  • Container: $CONTAINER_NAME"
     echo "  • Web Interface: http://localhost:3000"
     echo "  • Workspace: ~/workspace"
+    echo "  • Config: ~/.openhands"
+    echo "  • LLM: devstral-2507 via llama.cpp (port 11434)"
     echo ""
     echo "🧪 Run './test-openhands.sh test' to test the web interface"
     echo "🌐 Open http://localhost:3000 in your browser to access OpenHands"
+    echo ""
+    echo "💡 Prerequisites:"
+    echo "  • llama.cpp server running on port 11434"
+    echo "  • Run './test-llama-cpp.sh up' if not already running"
 }
 
 # Function to stop container
@@ -177,6 +202,7 @@ stop_container() {
     
     echo "✅ Container stopped and removed!"
     echo "📁 Workspace data preserved in ~/workspace"
+    echo "⚙️  Configuration preserved in ~/.openhands"
 }
 
 # Function to show container logs
@@ -224,6 +250,17 @@ show_status() {
             echo "❌ Web Interface: Not responding"
         fi
         
+        # Check llama.cpp dependency
+        echo ""
+        echo "🔍 Dependencies:"
+        echo "---------------"
+        if curl -s http://localhost:11434/health >/dev/null 2>&1; then
+            echo "✅ llama.cpp server: Running (port 11434)"
+        else
+            echo "❌ llama.cpp server: Not running (port 11434)"
+            echo "💡 Run './test-llama-cpp.sh up' to start llama.cpp"
+        fi
+        
     elif docker ps -aq --filter "name=$CONTAINER_NAME" | grep -q .; then
         echo "❌ Container exists but is stopped"
         docker ps -a --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
@@ -235,6 +272,7 @@ show_status() {
     echo "🌐 Access Points:"
     echo "  • Web Interface: http://localhost:3000"
     echo "  • Workspace: ~/workspace"
+    echo "  • Config: ~/.openhands"
     echo ""
     echo "📊 Quick Test Commands:"
     echo "  curl -I http://localhost:3000"
@@ -310,8 +348,40 @@ test_web_interface() {
     fi
     echo ""
     
-    # Test 4: Docker socket access
-    echo "🔍 Test 4: Docker Socket Access"
+    # Test 4: Configuration directory
+    echo "🔍 Test 4: Configuration Directory"
+    echo "=================================="
+    
+    if [ -d ~/.openhands ]; then
+        echo "✅ OpenHands config directory exists"
+        CONFIG_SIZE=$(du -sh ~/.openhands 2>/dev/null | cut -f1)
+        echo "⚙️  Config size: $CONFIG_SIZE"
+    else
+        echo "❌ OpenHands config directory does not exist"
+    fi
+    echo ""
+    
+    # Test 5: LLM Backend Connection
+    echo "🔍 Test 5: LLM Backend Connection"
+    echo "================================="
+    
+    if curl -s http://localhost:11434/health >/dev/null 2>&1; then
+        echo "✅ llama.cpp server is accessible"
+        
+        # Test models endpoint
+        if curl -s http://localhost:11434/v1/models | jq -r '.data[].id' | grep -q "devstral"; then
+            echo "✅ Devstral model is available"
+        else
+            echo "⚠️  Devstral model may not be loaded"
+        fi
+    else
+        echo "❌ llama.cpp server is not accessible"
+        echo "💡 Run './test-llama-cpp.sh up' to start llama.cpp server"
+    fi
+    echo ""
+    
+    # Test 6: Docker socket access
+    echo "🔍 Test 6: Docker Socket Access"
     echo "==============================="
     
     DOCKER_ACCESS=$(docker exec openhands-test docker --version 2>/dev/null)
@@ -320,7 +390,7 @@ test_web_interface() {
         echo "🐳 Docker version: $DOCKER_ACCESS"
     else
         echo "❌ Docker socket is not accessible from container"
-        echo "📋 This may be expected depending on OpenHands configuration"
+        echo "📋 This may affect agent capabilities"
     fi
     echo ""
     
@@ -329,7 +399,15 @@ test_web_interface() {
     echo "✅ Completed OpenHands web interface testing"
     echo "🌐 Web interface accessible at http://localhost:3000"
     echo "📁 Workspace available at ~/workspace"
-    echo "🤖 OpenHands development environment is ready"
+    echo "⚙️  Configuration stored in ~/.openhands"
+    echo "🤖 OpenHands AI development environment is ready"
+    echo ""
+    echo "🔗 Integration Status:"
+    if curl -s http://localhost:11434/health >/dev/null 2>&1; then
+        echo "  ✅ llama.cpp backend: Connected"
+    else
+        echo "  ❌ llama.cpp backend: Not connected"
+    fi
     echo ""
     echo "🚀 Access OpenHands in your browser: http://localhost:3000"
 }
