@@ -81,7 +81,6 @@ start_containers() {
             --ctx-size 88832 \
             --alias devstral-2507:latest \
             --chat-template chatml \
-            --log-format text \
             --metrics \
             --slot-save-path /models/slots
     fi
