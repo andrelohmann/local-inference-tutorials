@@ -37,7 +37,7 @@ show_usage() {
     echo "  • Runtime: docker.all-hands.dev/all-hands-ai/runtime:0.49-nikolaik"
     echo ""
     echo "LLM Configuration:"
-    echo "  • Model: openai/devstral-2507"
+    echo "  • Model: openai/devstral-small-2507"
     echo "  • Base URL: http://host.docker.internal:11434"
     echo "  • API Version: v1"
     echo "  • Auto-configured for local llama.cpp server"
@@ -83,7 +83,7 @@ start_container() {
     echo "  • Port: 3000"
     echo "  • Workspace: ~/.openhands/workspace"
     echo "  • Config: ~/.openhands"
-    echo "  • LLM Model: openai/devstral-2507"
+    echo "  • LLM Model: openai/devstral-small-2507"
     echo "  • LLM Base URL: http://host.docker.internal:11434"
     echo "  • Docker Socket: Mounted"
     echo ""
@@ -103,9 +103,12 @@ start_container() {
         -e LLM_API_KEY=dummy \
         -e LLM_API_VERSION=v1 \
         -e LLM_DROP_PARAMS=true \
+        -e LLM_CUSTOM_LLM_PROVIDER=openai \
+        -e DEFAULT_LLM_CONFIG='{"model":"openai/devstral-small-2507","base_url":"http://host.docker.internal:11434","api_key":"dummy","api_version":"v1","custom_llm_provider":"openai","drop_params":true}' \
         -e WORKSPACE_BASE=/workspace \
         -e SANDBOX_USER_ID=$(id -u) \
         -e SANDBOX_TIMEOUT=120 \
+        -e RUNTIME=docker \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v ~/.openhands:/.openhands \
         -v ~/.openhands/workspace:/workspace \
@@ -169,7 +172,7 @@ start_container() {
     echo "  • Web Interface: http://localhost:3000"
     echo "  • Workspace: ~/.openhands/workspace"
     echo "  • Config: ~/.openhands"
-    echo "  • LLM: devstral-2507 via llama.cpp (port 11434)"
+    echo "  • LLM: devstral-small-2507 via llama.cpp (port 11434)"
     echo ""
     echo "🧪 Run './test-openhands.sh test' to test the web interface"
     echo "🌐 Open http://localhost:3000 in your browser to access OpenHands"
