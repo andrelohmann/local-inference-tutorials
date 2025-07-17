@@ -13,12 +13,13 @@ show_usage() {
     echo "Usage: $0 [COMMAND]"
     echo ""
     echo "Commands:"
-    echo "  up      Start llama.cpp and OpenWebUI containers"
-    echo "  down    Stop and remove both containers and volumes"
-    echo "  logs    Show container logs"
-    echo "  status  Show container status"
-    echo "  test    Run API endpoint tests (chat and generate)"
-    echo "  help    Show this help message"
+    echo "  up         Start llama.cpp and OpenWebUI containers"
+    echo "  down       Stop and remove both containers and volumes"
+    echo "  logs       Show container logs"
+    echo "  status     Show container status"
+    echo "  test       Run API endpoint tests (chat and generate)"
+    echo "  basic-test Test basic container functionality"
+    echo "  help       Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0 up       # Start both containers"
@@ -68,7 +69,16 @@ start_containers() {
         fi
 
         echo "🔄 Starting llama.cpp container: $CONTAINER_NAME"
-        docker run -d \
+        echo "📝 Container arguments:"
+        echo "  - Model: /models/devstral-q4_k_m.gguf"
+        echo "  - Port: 11434"
+        echo "  - Host: 0.0.0.0"
+        echo "  - GPU Layers: 41"
+        echo "  - Context Size: 88832"
+        echo "  - Alias: devstral-2507:latest"
+        echo ""
+        
+        CONTAINER_ID=$(docker run -d \
             --name $CONTAINER_NAME \
             --gpus all \
             -p 11434:11434 \
@@ -79,7 +89,23 @@ start_containers() {
             --host 0.0.0.0 \
             --n-gpu-layers 41 \
             --ctx-size 88832 \
-            --alias devstral-2507:latest
+            --alias devstral-2507:latest)
+        
+        echo "✅ Container started with ID: $CONTAINER_ID"
+        echo "⏳ Waiting 3 seconds for container to initialize..."
+        sleep 3
+        
+        # Check if container is still running after initial startup
+        if ! docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
+            echo "❌ Container stopped during startup - checking logs..."
+            docker logs $CONTAINER_NAME
+            echo ""
+            echo "🔍 Container status:"
+            docker ps -a --filter "name=$CONTAINER_NAME"
+            echo ""
+            echo "❌ Container startup failed - exiting"
+            exit 1
+        fi
     fi
     
     # Wait for llama.cpp to be ready
@@ -119,10 +145,30 @@ start_containers() {
     
     # Test the OpenAI API endpoint
     echo "🔍 Testing llama.cpp OpenAI API compatibility..."
+    echo "💡 Testing health endpoint first..."
+    
+    # First test the health endpoint
+    HEALTH_RESPONSE=$(curl -s http://localhost:11434/health 2>/dev/null)
+    if [ $? -eq 0 ] && [ -n "$HEALTH_RESPONSE" ]; then
+        echo "✅ Health endpoint responded: $HEALTH_RESPONSE"
+    else
+        echo "❌ Health endpoint failed - container may not be ready"
+        echo "🔍 Checking container logs..."
+        docker logs --tail 10 $CONTAINER_NAME
+        echo ""
+        echo "🔍 Container status:"
+        docker ps -a --filter "name=$CONTAINER_NAME"
+        exit 1
+    fi
+    
+    # Then test the models endpoint
     if curl -s http://localhost:11434/v1/models | jq . >/dev/null 2>&1; then
         echo "✅ OpenAI API endpoint is working!"
     else
         echo "❌ OpenAI API endpoint test failed"
+        echo "🔍 Raw response:"
+        curl -s http://localhost:11434/v1/models
+        echo ""
         exit 1
     fi
     
@@ -654,6 +700,50 @@ run_api_tests() {
     echo "🌐 Ready to use with OpenWebUI at: http://localhost:8080"
 }
 
+# Function to test basic container functionality
+test_basic_container() {
+    echo "🧪 Testing Basic Container Functionality"
+    echo "======================================="
+    
+    CONTAINER_NAME="llama-cpp-basic-test"
+    
+    echo "🔄 Starting minimal test container..."
+    docker run --rm -d \
+        --name $CONTAINER_NAME \
+        --gpus all \
+        -p 11435:11434 \
+        -v ~/.models:/models \
+        llama-cpp-devstral \
+        --model /models/devstral-q4_k_m.gguf \
+        --port 11434 \
+        --host 0.0.0.0
+    
+    echo "⏳ Waiting 10 seconds for basic container to start..."
+    sleep 10
+    
+    echo "🔍 Checking basic container status..."
+    if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
+        echo "✅ Basic container is running"
+        echo "📋 Container logs:"
+        docker logs --tail 20 $CONTAINER_NAME
+        echo ""
+        echo "🔍 Testing basic health endpoint..."
+        if curl -s http://localhost:11435/health >/dev/null 2>&1; then
+            echo "✅ Basic health endpoint works!"
+        else
+            echo "❌ Basic health endpoint failed"
+        fi
+    else
+        echo "❌ Basic container failed to start"
+        echo "📋 Container logs:"
+        docker logs $CONTAINER_NAME
+    fi
+    
+    echo "🧹 Cleaning up basic test container..."
+    docker stop $CONTAINER_NAME >/dev/null 2>&1 || true
+    docker rm $CONTAINER_NAME >/dev/null 2>&1 || true
+}
+
 # Main script logic
 case "${1:-}" in
     "up"|"start")
@@ -670,6 +760,9 @@ case "${1:-}" in
         ;;
     "test")
         run_api_tests
+        ;;
+    "basic-test")
+        test_basic_container
         ;;
     "help"|"-h"|"--help")
         show_usage
