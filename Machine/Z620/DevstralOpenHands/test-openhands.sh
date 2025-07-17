@@ -30,7 +30,7 @@ show_usage() {
     echo "Configuration (Fixed Parameters):"
     echo "  • Container Name: openhands-test"
     echo "  • Port: 3000"
-    echo "  • Workspace: ~/workspace"
+    echo "  • Workspace: ~/.openhands/workspace"
     echo "  • OpenHands Config: ~/.openhands"
     echo "  • Docker Socket: /var/run/docker.sock"
     echo "  • Image: docker.all-hands.dev/all-hands-ai/openhands:0.49"
@@ -45,7 +45,7 @@ show_usage() {
     echo "Web Interface:"
     echo "  • URL: http://localhost:3000"
     echo "  • Development environment for AI agents"
-    echo "  • Access to workspace and Docker"
+    echo "  • Access to ~/.openhands/workspace and Docker"
     echo ""
     exit 0
 }
@@ -73,7 +73,7 @@ start_container() {
     fi
 
     # Create required directories
-    mkdir -p ~/workspace
+    mkdir -p ~/.openhands/workspace
     mkdir -p ~/.openhands
 
     echo "🔄 Starting OpenHands container..."
@@ -81,7 +81,7 @@ start_container() {
     echo "  • Image: $OPENHANDS_IMAGE"
     echo "  • Runtime: $RUNTIME_IMAGE"
     echo "  • Port: 3000"
-    echo "  • Workspace: ~/workspace"
+    echo "  • Workspace: ~/.openhands/workspace"
     echo "  • Config: ~/.openhands"
     echo "  • LLM Model: openai/devstral-2507"
     echo "  • LLM Base URL: http://host.docker.internal:11434"
@@ -98,15 +98,17 @@ start_container() {
         --pull=always \
         -e SANDBOX_RUNTIME_CONTAINER_IMAGE=$RUNTIME_IMAGE \
         -e LOG_ALL_EVENTS=true \
-        -e LLM_MODEL=openai/devstral-2507 \
+        -e LLM_MODEL=openai/devstral-small-2507 \
         -e LLM_BASE_URL=http://host.docker.internal:11434 \
         -e LLM_API_KEY=dummy \
         -e LLM_API_VERSION=v1 \
         -e LLM_DROP_PARAMS=true \
         -e WORKSPACE_BASE=/workspace \
+        -e SANDBOX_USER_ID=$(id -u) \
+        -e SANDBOX_TIMEOUT=120 \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v ~/.openhands:/.openhands \
-        -v ~/workspace:/workspace \
+        -v ~/.openhands/workspace:/workspace \
         -p 3000:3000 \
         --add-host host.docker.internal:host-gateway \
         $OPENHANDS_IMAGE)
@@ -165,7 +167,7 @@ start_container() {
     echo "🎉 OpenHands container is running successfully!"
     echo "  • Container: $CONTAINER_NAME"
     echo "  • Web Interface: http://localhost:3000"
-    echo "  • Workspace: ~/workspace"
+    echo "  • Workspace: ~/.openhands/workspace"
     echo "  • Config: ~/.openhands"
     echo "  • LLM: devstral-2507 via llama.cpp (port 11434)"
     echo ""
@@ -201,7 +203,7 @@ stop_container() {
     fi
     
     echo "✅ Container stopped and removed!"
-    echo "📁 Workspace data preserved in ~/workspace"
+    echo "📁 Workspace data preserved in ~/.openhands/workspace"
     echo "⚙️  Configuration preserved in ~/.openhands"
 }
 
@@ -271,7 +273,7 @@ show_status() {
     echo ""
     echo "🌐 Access Points:"
     echo "  • Web Interface: http://localhost:3000"
-    echo "  • Workspace: ~/workspace"
+    echo "  • Workspace: ~/.openhands/workspace"
     echo "  • Config: ~/.openhands"
     echo ""
     echo "📊 Quick Test Commands:"
@@ -330,18 +332,24 @@ test_web_interface() {
     echo "🔍 Test 3: Workspace Access"
     echo "==========================="
     
-    if [ -d ~/workspace ]; then
+    if [ -d ~/.openhands/workspace ]; then
         echo "✅ Workspace directory exists"
-        WORKSPACE_SIZE=$(du -sh ~/workspace 2>/dev/null | cut -f1)
+        WORKSPACE_SIZE=$(du -sh ~/.openhands/workspace 2>/dev/null | cut -f1)
         echo "📁 Workspace size: $WORKSPACE_SIZE"
         
+        # Show workspace permissions
+        WORKSPACE_PERMS=$(ls -ld ~/.openhands/workspace 2>/dev/null)
+        echo "🔐 Workspace permissions: $WORKSPACE_PERMS"
+        
         # Test write access
-        TEST_FILE="~/workspace/.openhands-test-$(date +%s)"
+        TEST_FILE="$HOME/.openhands/workspace/.openhands-test-$(date +%s)"
         if touch "$TEST_FILE" 2>/dev/null; then
             echo "✅ Workspace is writable"
             rm -f "$TEST_FILE"
         else
             echo "❌ Workspace is not writable"
+            echo "💡 Check permissions: ls -la ~/.openhands/workspace"
+            echo "💡 Try: sudo chown -R $(whoami):$(whoami) ~/.openhands/workspace"
         fi
     else
         echo "❌ Workspace directory does not exist"
@@ -385,12 +393,22 @@ test_web_interface() {
     echo "==============================="
     
     DOCKER_ACCESS=$(docker exec openhands-test docker --version 2>/dev/null)
-    if [ $? -eq 0 ]; then
+    DOCKER_EXIT_CODE=$?
+    
+    if [ $DOCKER_EXIT_CODE -eq 0 ] && [ -n "$DOCKER_ACCESS" ]; then
         echo "✅ Docker socket is accessible from container"
         echo "🐳 Docker version: $DOCKER_ACCESS"
     else
         echo "❌ Docker socket is not accessible from container"
         echo "📋 This may affect agent capabilities"
+        echo "🔍 Testing alternative Docker access..."
+        
+        # Try alternative Docker socket test
+        if docker exec openhands-test ls -la /var/run/docker.sock 2>/dev/null | grep -q "docker.sock"; then
+            echo "✅ Docker socket file is mounted"
+        else
+            echo "❌ Docker socket file is not mounted"
+        fi
     fi
     echo ""
     
@@ -398,7 +416,7 @@ test_web_interface() {
     echo "==============="
     echo "✅ Completed OpenHands web interface testing"
     echo "🌐 Web interface accessible at http://localhost:3000"
-    echo "📁 Workspace available at ~/workspace"
+    echo "📁 Workspace available at ~/.openhands/workspace"
     echo "⚙️  Configuration stored in ~/.openhands"
     echo "🤖 OpenHands AI development environment is ready"
     echo ""
