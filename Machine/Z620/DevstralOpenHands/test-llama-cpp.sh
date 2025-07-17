@@ -110,7 +110,7 @@ start_container() {
         -e LLAMA_ARG_PARALLEL=1 \
         -e NVIDIA_VISIBLE_DEVICES=all \
         -e NVIDIA_DRIVER_CAPABILITIES=compute,utility \
-        -e MODEL_ALIAS=devstral-2507:latest \
+        -e MODEL_ALIAS=devstral-2507 \
         llama-cpp-devstral)
     
     echo "✅ Container started with ID: $CONTAINER_ID"
@@ -308,7 +308,7 @@ run_api_tests() {
     fi
     
     BASE_URL="http://localhost:11434"
-    MODEL="devstral-2507:latest"
+    MODEL="devstral-2507"
     
     echo "🔍 Testing OpenAI-compatible API endpoints..."
     echo ""

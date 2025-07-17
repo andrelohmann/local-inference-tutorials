@@ -116,60 +116,14 @@ start_container() {
     # Start container with fixed parameters
     CONTAINER_ID=$(docker run -d \
         --name openwebui-test \
-        -p 3000:8080 \
+        -p 8080:8080 \
         -v ~/.openwebui:/app/backend/data \
-        #--add-host=host.docker.internal:host-gateway \
-        #-e WEBUI_AUTH=false \
-        #-e ENABLE_SIGNUP=false \
-        #-e ENABLE_LOGIN_FORM=false \
-        #-e ENABLE_OLLAMA_API=false \
-        #-e ENABLE_OPENAI_API=true \
-        #-e OPENAI_API_BASE_URL=http://host.docker.internal:11434/v1 \
-        #-e OPENAI_API_KEY=sk-no-key-required \
-        #-e DEFAULT_MODELS=devstral-2507:latest \
-        #-e DEFAULT_USER_ROLE=admin \
-        #-e WEBUI_SECRET_KEY=your-secret-key-here \
-        #-e SCARF_NO_ANALYTICS=true \
-        #-e DO_NOT_TRACK=true \
-        #-e ANONYMIZED_TELEMETRY=false \
-        #-e WEBUI_SESSION_COOKIE_SAME_SITE=lax \
-        #-e WEBUI_SESSION_COOKIE_SECURE=false \
-        #-e WEBUI_NAME="OpenWebUI Test Environment" \
-        #-e SHOW_ADMIN_DETAILS=false \
-        #-e ADMIN_EMAIL=admin@localhost \
-        #-e ENABLE_COMMUNITY_SHARING=false \
-        #-e ENABLE_MESSAGE_RATING=false \
-        #-e ENABLE_MODEL_FILTER=false \
-        #-e MODEL_FILTER_LIST="" \
-        #-e TASK_MODEL=devstral-2507:latest \
-        #-e TITLE_GENERATION_PROMPT_TEMPLATE="Create a concise title for this conversation in 5 words or less" \
-        #-e ENABLE_WEB_SEARCH=false \
-        #-e ENABLE_IMAGE_GENERATION=false \
-        #-e ENABLE_RAG_HYBRID_SEARCH=false \
-        #-e ENABLE_RAG_WEB_SEARCH=false \
-        #-e ENABLE_RAG_LOCAL_WEB_FETCH=false \
-        #-e ENABLE_RETRIEVAL_QUERY_GENERATION=false \
-        #-e AUDIO_STT_ENGINE=openai \
-        #-e AUDIO_STT_MODEL=whisper-1 \
-        #-e AUDIO_TTS_ENGINE=openai \
-        #-e AUDIO_TTS_MODEL=tts-1 \
-        #-e AUDIO_TTS_VOICE=alloy \
-        #-e WHISPER_MODEL=base \
-        #-e WHISPER_MODEL_AUTO_UPDATE=false \
-        #-e TTS_ENGINE=openai \
-        #-e TTS_MODEL=tts-1 \
-        #-e TTS_VOICE=alloy \
-        #-e ENABLE_LDAP=false \
-        #-e ENABLE_OAUTH=false \
-        #-e OAUTH_MERGE_ACCOUNTS_BY_EMAIL=false \
-        #-e WEBUI_BUILD_HASH=dev-build \
-        #-e CORS_ALLOW_ORIGIN=* \
-        #-e WEBUI_URL=http://localhost:3000 \
-        -#e WEBUI_HOST=0.0.0.0 \
-        #-e WEBUI_PORT=8080 \
-        #-e BACKEND_HOST=0.0.0.0 \
-        #-e BACKEND_PORT=8080 \
-        #-e FRONTEND_BUILD_DIR=/app/build \
+        --add-host=host.docker.internal:host-gateway \
+        -e WEBUI_AUTH=false \
+        -e ENABLE_OLLAMA_API=false \
+        -e ENABLE_OPENAI_API=true \
+        -e OPENAI_API_BASE_URL=http://host.docker.internal:11434/v1 \
+        -e OPENAI_API_KEY=sk-no-key-required \
         ghcr.io/open-webui/open-webui:latest)
     
     echo "✅ Container started with ID: $CONTAINER_ID"
