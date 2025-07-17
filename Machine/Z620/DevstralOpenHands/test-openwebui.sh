@@ -29,7 +29,7 @@ show_usage() {
     echo ""
     echo "Configuration (Fixed Parameters):"
     echo "  • Container Name: openwebui-test"
-    echo "  • Port: 3000"
+    echo "  • Port: 8080"
     echo "  • Data Path: ~/.openwebui:/app/backend/data"
     echo "  • Authentication: Disabled"
     echo "  • llama.cpp Endpoint: http://host.docker.internal:11434"
@@ -37,13 +37,14 @@ show_usage() {
     echo "  • Context Window: 88832"
     echo "  • OpenAI API: Enabled"
     echo "  • Ollama API: Disabled"
+    echo "  • User/Group ID: Auto-detected (fixes permission issues)"
     echo ""
     echo "Prerequisites:"
     echo "  • llama.cpp container must be running on port 11434"
     echo "  • Run './test-llama-cpp.sh up' first"
     echo ""
     echo "Web Interface:"
-    echo "  • OpenWebUI: http://localhost:3000"
+    echo "  • OpenWebUI: http://localhost:8080"
     echo "  • No login required (authentication disabled)"
     echo ""
     exit 0
@@ -101,6 +102,10 @@ start_container() {
         mkdir -p ~/.openwebui
         echo "✅ Created ~/.openwebui directory"
     fi
+    
+    # Get current user ID and group ID to avoid permission issues
+    USER_ID=$(id -u)
+    GROUP_ID=$(id -g)
 
     echo "🔄 Starting OpenWebUI container with fixed parameters..."
     echo "📝 Container Configuration:"
@@ -111,7 +116,13 @@ start_container() {
     echo "  • Model: devstral-2507:latest"
     echo "  • Context Window: 88832"
     echo "  • Data Volume: ~/.openwebui:/app/backend/data"
+    echo "  • User ID: $USER_ID (avoids permission issues)"
+    echo "  • Group ID: $GROUP_ID (avoids permission issues)"
     echo ""
+    
+    # Get current user ID and group ID to avoid permission issues
+    USER_ID=$(id -u)
+    GROUP_ID=$(id -g)
     
     # Start container with fixed parameters
     CONTAINER_ID=$(docker run -d \
@@ -119,6 +130,8 @@ start_container() {
         -p 8080:8080 \
         -v ~/.openwebui:/app/backend/data \
         --add-host=host.docker.internal:host-gateway \
+        -e PUID=$USER_ID \
+        -e PGID=$GROUP_ID \
         -e WEBUI_AUTH=false \
         -e ENABLE_OLLAMA_API=false \
         -e ENABLE_OPENAI_API=true \
@@ -146,7 +159,7 @@ start_container() {
     # Wait for OpenWebUI to be ready
     echo "⏳ Waiting for OpenWebUI to be ready..."
     for i in {1..60}; do
-        if curl -s http://localhost:3000 >/dev/null 2>&1; then
+        if curl -s http://localhost:8080 >/dev/null 2>&1; then
             echo "✅ OpenWebUI is ready!"
             break
         fi
@@ -180,7 +193,7 @@ start_container() {
     echo "🔍 Testing OpenWebUI connectivity..."
     
     # Test main page
-    if curl -s http://localhost:3000 >/dev/null 2>&1; then
+    if curl -s http://localhost:8080 >/dev/null 2>&1; then
         echo "✅ OpenWebUI main page accessible"
     else
         echo "❌ OpenWebUI main page failed"
@@ -190,14 +203,14 @@ start_container() {
     echo ""
     echo "🎉 OpenWebUI container is running successfully!"
     echo "  • Container: openwebui-test"
-    echo "  • Web Interface: http://localhost:3000"
+    echo "  • Web Interface: http://localhost:8080"
     echo "  • Authentication: Disabled (no login required)"
     echo "  • Connected to llama.cpp: http://host.docker.internal:11434"
     echo "  • Available Model: devstral-2507:latest"
     echo "  • Context Window: 88832 tokens"
     echo ""
     echo "🧪 Run './test-openwebui.sh test' to test functionality"
-    echo "🌐 Open http://localhost:3000 in your browser"
+    echo "🌐 Open http://localhost:8080 in your browser"
 }
 
 # Function to stop container
@@ -228,6 +241,7 @@ stop_container() {
     if [ -d ~/.openwebui ]; then
         rm -rf ~/.openwebui/*
         echo "✅ Cleared ~/.openwebui directory"
+        echo "💡 Note: Container runs with your user ID to avoid permission issues"
     fi
     
     echo "✅ Container stopped and removed!"
@@ -283,7 +297,7 @@ show_status() {
         echo "-------------------"
         
         # Web interface check
-        if curl -s http://localhost:3000 >/dev/null 2>&1; then
+        if curl -s http://localhost:8080 >/dev/null 2>&1; then
             echo "✅ Web Interface: Available"
         else
             echo "❌ Web Interface: Not responding"
@@ -305,15 +319,15 @@ show_status() {
     
     echo ""
     echo "🌐 Access Information:"
-    echo "  • Web Interface: http://localhost:3000"
+    echo "  • Web Interface: http://localhost:8080"
     echo "  • Authentication: Disabled"
     echo "  • Default Model: devstral-2507:latest"
     echo "  • Context Window: 88832 tokens"
     echo "  • llama.cpp Endpoint: http://host.docker.internal:11434"
     echo ""
     echo "📊 Quick Test Commands:"
-    echo "  curl http://localhost:3000"
-    echo "  open http://localhost:3000"
+    echo "  curl http://localhost:8080"
+    echo "  open http://localhost:8080"
     echo "  ./test-openwebui.sh test"
 }
 
@@ -336,7 +350,7 @@ run_openwebui_tests() {
         exit 1
     fi
     
-    BASE_URL="http://localhost:3000"
+    BASE_URL="http://localhost:8080"
     
     echo "🔍 Testing OpenWebUI functionality..."
     echo ""
@@ -483,7 +497,7 @@ run_openwebui_tests() {
     echo "🔧 Container health and network connectivity verified"
     echo ""
     echo "🚀 OpenWebUI is ready for use!"
-    echo "🌐 Access at: http://localhost:3000"
+    echo "🌐 Access at: http://localhost:8080"
     echo "🤖 Model: devstral-2507:latest"
     echo "📝 Context: 88832 tokens"
     echo "🔓 No authentication required"
