@@ -79,6 +79,10 @@ start_container() {
     
     # Create LLM configuration file
     echo "🔧 Creating LLM configuration..."
+    cat > ~/.openhands/settings.json << EOF
+{"language":"en","agent":"CodeActAgent","max_iterations":null,"security_analyzer":null,"confirmation_mode":false,"llm_model":"openai/devstral-small-2507","llm_api_key":"DEVSTRAL","llm_base_url":"http://host.docker.internal:11434","remote_runtime_resource_factor":1,"secrets_store":{"provider_tokens":{}},"enable_default_condenser":true,"enable_sound_notifications":false,"enable_proactive_conversation_starters":false,"user_consents_to_analytics":false,"sandbox_base_container_image":null,"sandbox_runtime_container_image":null,"mcp_config":{"sse_servers":[],"stdio_servers":[],"shttp_servers":[]},"search_api_key":"","sandbox_api_key":null,"max_budget_per_task":null,"email":null,"email_verified":null}
+EOF
+
     cat > ~/.openhands/config.toml << EOF
 [llm]
 model = "openai/devstral-small-2507"
