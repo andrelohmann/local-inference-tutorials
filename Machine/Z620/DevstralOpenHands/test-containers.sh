@@ -72,9 +72,9 @@ start_containers() {
             --name $CONTAINER_NAME \
             --gpus all \
             -p 11434:11434 \
-            -v /Users/andrelohmann/Workspace/local-inference-tutorials/Model:/app/models \
+            -v ~/Workspace/local-inference-tutorials/Model:/models \
             llama-cpp-devstral \
-            --model /app/models/devstral-q4_k_m.gguf \
+            --model /models/devstral-q4_k_m.gguf \
             --port 11434 \
             --host 0.0.0.0 \
             --n-gpu-layers 41 \
@@ -83,7 +83,7 @@ start_containers() {
             --chat-template chatml \
             --log-format text \
             --metrics \
-            --slot-save-path /app/models/slots
+            --slot-save-path /models/slots
     fi
     
     # Wait for llama.cpp to be ready
