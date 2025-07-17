@@ -72,7 +72,7 @@ start_containers() {
             --name $CONTAINER_NAME \
             --gpus all \
             -p 11434:11434 \
-            -v ~/Workspace/local-inference-tutorials/Model:/models \
+            -v ~/.models:/models \
             llama-cpp-devstral \
             --model /models/devstral-q4_k_m.gguf \
             --port 11434 \
