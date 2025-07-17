@@ -95,8 +95,14 @@ start_containers() {
         fi
         if [ $i -eq 30 ]; then
             echo "❌ llama.cpp failed to start within 30 seconds"
+            echo "🔍 Checking container logs for debugging..."
+            docker logs --tail 20 $CONTAINER_NAME
+            echo ""
+            echo "🔍 Checking container status..."
+            docker ps -a --filter "name=$CONTAINER_NAME"
             exit 1
         fi
+        echo "⏳ Attempt $i/30 - waiting for llama.cpp..."
         sleep 1
     done
     
