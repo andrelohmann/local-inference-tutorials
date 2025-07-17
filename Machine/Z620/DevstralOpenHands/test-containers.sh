@@ -89,6 +89,21 @@ start_containers() {
             echo "✅ llama.cpp is ready!"
             break
         fi
+        
+        # Check if container is still running
+        if ! docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
+            echo "❌ llama.cpp container stopped unexpectedly"
+            echo "🔍 Checking container logs for debugging..."
+            docker logs --tail 20 $CONTAINER_NAME
+            echo ""
+            echo "🔍 Checking container status..."
+            docker ps -a --filter "name=$CONTAINER_NAME"
+            echo ""
+            echo "🔄 Attempting to restart container..."
+            docker start $CONTAINER_NAME
+            sleep 2
+        fi
+        
         if [ $i -eq 30 ]; then
             echo "❌ llama.cpp failed to start within 30 seconds"
             echo "🔍 Checking container logs for debugging..."
@@ -137,7 +152,7 @@ start_containers() {
             -e RESET_CONFIG_ON_START=true \
             -e ENABLE_OLLAMA_API=false \
             -e ENABLE_OPENAI_API=true \
-            -e OPENAI_API_BASE_URL="http://host.docker.internal:11434/v1" \
+            -e OPENAI_API_BASE_URL="http://172.17.0.1:11434/v1" \
             -e OPENAI_API_KEY="dummy-key" \
             -e DEFAULT_MODELS="devstral-2507:latest" \
             -e WEBUI_NAME="llama.cpp + OpenWebUI" \
@@ -148,21 +163,26 @@ start_containers() {
             -e ENABLE_COMMUNITY_SHARING=false \
             -e ENABLE_MESSAGE_RATING=false \
             -e LOG_LEVEL=INFO \
-            --add-host=host.docker.internal:host-gateway \
             ghcr.io/open-webui/open-webui:main
     fi
     
     # Wait for OpenWebUI to be ready
     echo "⏳ Waiting for OpenWebUI to be ready..."
-    for i in {1..60}; do
+    for i in {1..90}; do
         if curl -s http://localhost:8080 >/dev/null 2>&1; then
             echo "✅ OpenWebUI is ready!"
             break
         fi
-        if [ $i -eq 60 ]; then
-            echo "❌ OpenWebUI failed to start within 60 seconds"
+        if [ $i -eq 90 ]; then
+            echo "❌ OpenWebUI failed to start within 90 seconds"
+            echo "🔍 Checking OpenWebUI logs for debugging..."
+            docker logs --tail 20 $OPENWEBUI_CONTAINER_NAME
+            echo ""
+            echo "🔍 Checking OpenWebUI status..."
+            docker ps -a --filter "name=$OPENWEBUI_CONTAINER_NAME"
             exit 1
         fi
+        echo "⏳ Attempt $i/90 - waiting for OpenWebUI..."
         sleep 1
     done
     
@@ -228,22 +248,32 @@ show_logs() {
     
     # Show llama.cpp logs
     if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
-        echo "🔍 llama.cpp Container Logs:"
+        echo "🔍 llama.cpp Container Logs (Running):"
+        echo "-----------------------------"
+        docker logs --tail 50 $CONTAINER_NAME
+        echo ""
+    elif docker ps -aq --filter "name=$CONTAINER_NAME" | grep -q .; then
+        echo "🔍 llama.cpp Container Logs (Stopped):"
         echo "-----------------------------"
         docker logs --tail 50 $CONTAINER_NAME
         echo ""
     else
-        echo "❌ llama.cpp container is not running"
+        echo "❌ llama.cpp container does not exist"
     fi
     
     # Show OpenWebUI logs
     if docker ps -q --filter "name=$OPENWEBUI_CONTAINER_NAME" | grep -q .; then
-        echo "🔍 OpenWebUI Container Logs:"
+        echo "🔍 OpenWebUI Container Logs (Running):"
+        echo "-----------------------------"
+        docker logs --tail 50 $OPENWEBUI_CONTAINER_NAME
+        echo ""
+    elif docker ps -aq --filter "name=$OPENWEBUI_CONTAINER_NAME" | grep -q .; then
+        echo "🔍 OpenWebUI Container Logs (Stopped):"
         echo "-----------------------------"
         docker logs --tail 50 $OPENWEBUI_CONTAINER_NAME
         echo ""
     else
-        echo "❌ OpenWebUI container is not running"
+        echo "❌ OpenWebUI container does not exist"
     fi
 }
 
