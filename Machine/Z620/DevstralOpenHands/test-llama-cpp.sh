@@ -325,17 +325,17 @@ calculate_tps() {
     
     # Try to calculate TPS using response timing data first
     if [ "$timings_predicted_ms" != "null" ] && [ "$timings_predicted_n" != "null" ] && [ "$timings_predicted_ms" != "0" ]; then
-        # llama.cpp native timing format
-        local tps=$(echo "scale=2; $timings_predicted_n * 1000 / $timings_predicted_ms" | bc -l 2>/dev/null)
+        # llama.cpp native timing format - use awk for more reliable math
+        local tps=$(echo "$timings_predicted_n $timings_predicted_ms" | awk '{printf "%.2f", $1 * 1000 / $2}' 2>/dev/null)
         echo "⚡ Performance: ${timings_predicted_n} tokens in ${timings_predicted_ms}ms = ${tps} tokens/sec"
-        if [ "$timings_prompt_ms" != "null" ] && [ "$timings_prompt_n" != "null" ]; then
-            local prompt_tps=$(echo "scale=2; $timings_prompt_n * 1000 / $timings_prompt_ms" | bc -l 2>/dev/null)
+        if [ "$timings_prompt_ms" != "null" ] && [ "$timings_prompt_n" != "null" ] && [ "$timings_prompt_ms" != "0" ]; then
+            local prompt_tps=$(echo "$timings_prompt_n $timings_prompt_ms" | awk '{printf "%.2f", $1 * 1000 / $2}' 2>/dev/null)
             echo "⚡ Prompt eval: ${timings_prompt_n} tokens in ${timings_prompt_ms}ms = ${prompt_tps} tokens/sec"
         fi
     elif [ "$eval_duration" != "null" ] && [ "$completion_tokens" != "0" ] && [ "$eval_duration" != "0" ]; then
-        # Duration in nanoseconds, convert to seconds
-        local duration_sec=$(echo "scale=6; $eval_duration / 1000000000" | bc -l 2>/dev/null)
-        local tps=$(echo "scale=2; $completion_tokens / $duration_sec" | bc -l 2>/dev/null)
+        # Duration in nanoseconds, convert to seconds - use awk for more reliable math
+        local tps=$(echo "$completion_tokens $eval_duration" | awk '{printf "%.2f", $1 * 1000000000 / $2}' 2>/dev/null)
+        local duration_sec=$(echo "$eval_duration" | awk '{printf "%.3f", $1 / 1000000000}' 2>/dev/null)
         echo "⚡ Performance: ${completion_tokens} tokens in ${duration_sec}s = ${tps} tokens/sec"
     else
         echo "⚡ Performance: No timing data available in response"
