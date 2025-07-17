@@ -100,6 +100,15 @@ start_containers() {
         sleep 1
     done
     
+    # Test the OpenAI API endpoint
+    echo "🔍 Testing llama.cpp OpenAI API compatibility..."
+    if curl -s http://localhost:11434/v1/models | jq . >/dev/null 2>&1; then
+        echo "✅ OpenAI API endpoint is working!"
+    else
+        echo "❌ OpenAI API endpoint test failed"
+        exit 1
+    fi
+    
     # Check if OpenWebUI container is already running
     if docker ps -q --filter "name=$OPENWEBUI_CONTAINER_NAME" | grep -q .; then
         echo "⚠️  OpenWebUI container is already running"
@@ -124,10 +133,19 @@ start_containers() {
             -e ENABLE_LOGIN_FORM=false \
             -e ENABLE_PERSISTENT_CONFIG=false \
             -e RESET_CONFIG_ON_START=true \
-            -e DEFAULT_MODELS="devstral-2507:latest" \
-            -e OLLAMA_BASE_URL="http://host.docker.internal:11434" \
+            -e ENABLE_OLLAMA_API=false \
+            -e ENABLE_OPENAI_API=true \
             -e OPENAI_API_BASE_URL="http://host.docker.internal:11434/v1" \
             -e OPENAI_API_KEY="dummy-key" \
+            -e DEFAULT_MODELS="devstral-2507:latest" \
+            -e WEBUI_NAME="llama.cpp + OpenWebUI" \
+            -e WEBUI_URL="http://localhost:8080" \
+            -e CORS_ALLOW_ORIGIN="*" \
+            -e ENABLE_MODEL_FILTER=false \
+            -e ENABLE_ADMIN_EXPORT=false \
+            -e ENABLE_COMMUNITY_SHARING=false \
+            -e ENABLE_MESSAGE_RATING=false \
+            -e LOG_LEVEL=INFO \
             --add-host=host.docker.internal:host-gateway \
             ghcr.io/open-webui/open-webui:main
     fi
