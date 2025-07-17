@@ -158,7 +158,7 @@ start_container() {
     
     # Wait for OpenWebUI to be ready
     echo "⏳ Waiting for OpenWebUI to be ready..."
-    for i in {1..60}; do
+    for i in {1..90}; do
         if curl -s http://localhost:8080 >/dev/null 2>&1; then
             echo "✅ OpenWebUI is ready!"
             break
@@ -175,8 +175,8 @@ start_container() {
             exit 1
         fi
         
-        if [ $i -eq 60 ]; then
-            echo "❌ OpenWebUI failed to start within 60 seconds"
+        if [ $i -eq 90 ]; then
+            echo "❌ OpenWebUI failed to start within 90 seconds"
             echo "🔍 Container logs:"
             docker logs --tail 30 $CONTAINER_NAME
             echo ""
@@ -185,7 +185,7 @@ start_container() {
             exit 1
         fi
         
-        echo "⏳ Attempt $i/60 - waiting for OpenWebUI..."
+        echo "⏳ Attempt $i/90 - waiting for OpenWebUI..."
         sleep 1
     done
     
