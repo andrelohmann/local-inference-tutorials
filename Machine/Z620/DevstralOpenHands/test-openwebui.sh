@@ -163,11 +163,18 @@ start_container() {
         -e ENABLE_OAUTH=false \
         -e OAUTH_MERGE_ACCOUNTS_BY_EMAIL=false \
         -e WEBUI_BUILD_HASH=dev-build \
-        ghcr.io/open-webui/open-webui:main)
+        -e CORS_ALLOW_ORIGIN=* \
+        -e WEBUI_URL=http://localhost:3000 \
+        -e WEBUI_HOST=0.0.0.0 \
+        -e WEBUI_PORT=8080 \
+        -e BACKEND_HOST=0.0.0.0 \
+        -e BACKEND_PORT=8080 \
+        -e FRONTEND_BUILD_DIR=/app/build \
+        ghcr.io/open-webui/open-webui:latest)
     
     echo "✅ Container started with ID: $CONTAINER_ID"
-    echo "⏳ Waiting 10 seconds for container to initialize..."
-    sleep 10
+    echo "⏳ Waiting 15 seconds for container to initialize..."
+    sleep 15
     
     # Check if container is still running after startup
     if ! docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
