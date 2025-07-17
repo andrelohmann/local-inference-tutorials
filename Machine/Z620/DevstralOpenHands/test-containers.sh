@@ -462,78 +462,165 @@ run_api_tests() {
     echo ""
     echo ""
     
-    # Test 8: OpenHands Generate endpoint (/v1/api/generate)
-    echo "🔧 Test 8: OpenHands Generate (v1/api/generate)"
-    echo "-----------------------------------------------"
-    echo "Endpoint: POST /v1/api/generate"
+    # Test 8: Chat Completions with Code Review (Streaming)
+    echo "� Test 8: Chat Completions - Code Review (Streaming)"
+    echo "-----------------------------------------------------"
+    echo "Endpoint: POST /v1/chat/completions"
     echo "Model: $MODEL_ALIAS"
-    echo "Prompt: Hello, my name is"
-    echo ""
-    
-    OPENHANDS_V1_RESPONSE=$(curl -s -X POST http://localhost:$HOST_PORT/v1/api/generate \
-        -H 'Content-Type: application/json' \
-        -d '{
-            "model": "'$MODEL_ALIAS'",
-            "prompt": "Hello, my name is",
-            "stream": false
-        }' 2>/dev/null || echo '{"error": "Endpoint not available"}')
-    
-    echo "Response:"
-    echo "$OPENHANDS_V1_RESPONSE" | jq .
-    echo ""
-    
-    # Test 9: OpenHands Generate endpoint (/api/generate)
-    echo "🔧 Test 9: OpenHands Generate (api/generate)"
-    echo "--------------------------------------------"
-    echo "Endpoint: POST /api/generate"
-    echo "Model: $MODEL_ALIAS"
-    echo "Prompt: Hello, my name is"
-    echo ""
-    
-    OPENHANDS_RESPONSE=$(curl -s -X POST http://localhost:$HOST_PORT/api/generate \
-        -H 'Content-Type: application/json' \
-        -d '{
-            "model": "'$MODEL_ALIAS'",
-            "prompt": "Hello, my name is",
-            "stream": false
-        }' 2>/dev/null || echo '{"error": "Endpoint not available"}')
-    
-    echo "Response:"
-    echo "$OPENHANDS_RESPONSE" | jq .
-    echo ""
-    
-    # Test 10: OpenHands Generate with streaming
-    echo "🔧 Test 10: OpenHands Generate (Streaming)"
-    echo "------------------------------------------"
-    echo "Endpoint: POST /api/generate"
-    echo "Model: $MODEL_ALIAS"
-    echo "Prompt: Explain Docker containers"
+    echo "Task: Code review and improvement suggestions"
     echo "Stream: true"
     echo ""
     
     echo "Streaming response:"
-    curl -s -X POST http://localhost:$HOST_PORT/api/generate \
+    curl -s -X POST http://localhost:$HOST_PORT/v1/chat/completions \
         -H 'Content-Type: application/json' \
         -d '{
             "model": "'$MODEL_ALIAS'",
-            "prompt": "Explain Docker containers in simple terms:",
-            "stream": true
-        }' 2>/dev/null | while IFS= read -r line; do
+            "messages": [
+                {"role": "user", "content": "Please review this Python code and suggest improvements:\n\ndef process_data(data):\n    result = []\n    for i in range(len(data)):\n        if data[i] > 0:\n            result.append(data[i] * 2)\n    return result"}
+            ],
+            "stream": true,
+            "max_tokens": 250,
+            "temperature": 0.4
+        }' | while IFS= read -r line; do
             if [[ "$line" == data:* ]]; then
                 data_part="${line#data: }"
                 if [[ "$data_part" != "[DONE]" ]]; then
-                    content=$(echo "$data_part" | jq -r '.response // empty' 2>/dev/null)
+                    content=$(echo "$data_part" | jq -r '.choices[0].delta.content // empty' 2>/dev/null)
                     if [[ -n "$content" && "$content" != "null" ]]; then
                         echo -n "$content"
                     fi
                 fi
             fi
-        done || echo "Endpoint not available or streaming not supported"
+        done
     echo ""
     echo ""
     
-    # Test 11: Performance comparison
-    echo "📊 Test 11: Performance Summary"
+    # Test 9: Generate Completions with SQL Query (Streaming)
+    echo "⚡ Test 9: Generate Completions - SQL Query (Streaming)"
+    echo "------------------------------------------------------"
+    echo "Endpoint: POST /v1/completions"
+    echo "Model: $MODEL_ALIAS"
+    echo "Task: Generate SQL query"
+    echo "Stream: true"
+    echo ""
+    
+    echo "Streaming response:"
+    curl -s -X POST http://localhost:$HOST_PORT/v1/completions \
+        -H 'Content-Type: application/json' \
+        -d '{
+            "model": "'$MODEL_ALIAS'",
+            "prompt": "Write a SQL query to find the top 5 customers by total order value from tables customers and orders:\n\nSELECT",
+            "max_tokens": 150,
+            "stream": true,
+            "temperature": 0.2,
+            "stop": [";"]
+        }' | while IFS= read -r line; do
+            if [[ "$line" == data:* ]]; then
+                data_part="${line#data: }"
+                if [[ "$data_part" != "[DONE]" ]]; then
+                    content=$(echo "$data_part" | jq -r '.choices[0].text // empty' 2>/dev/null)
+                    if [[ -n "$content" && "$content" != "null" ]]; then
+                        echo -n "$content"
+                    fi
+                fi
+            fi
+        done
+    echo ""
+    echo ""
+    
+    # Test 10: Chat Completions with Technical Explanation (Streaming)
+    echo "💬 Test 10: Chat Completions - Technical Explanation (Streaming)"
+    echo "---------------------------------------------------------------"
+    echo "Endpoint: POST /v1/chat/completions"
+    echo "Model: $MODEL_ALIAS"
+    echo "Task: Explain complex technical concept"
+    echo "Stream: true"
+    echo ""
+    
+    echo "Streaming response:"
+    curl -s -X POST http://localhost:$HOST_PORT/v1/chat/completions \
+        -H 'Content-Type: application/json' \
+        -d '{
+            "model": "'$MODEL_ALIAS'",
+            "messages": [
+                {"role": "user", "content": "Explain how Docker containers work under the hood, including namespaces, cgroups, and the container runtime."}
+            ],
+            "stream": true,
+            "max_tokens": 400,
+            "temperature": 0.6
+        }' | while IFS= read -r line; do
+            if [[ "$line" == data:* ]]; then
+                data_part="${line#data: }"
+                if [[ "$data_part" != "[DONE]" ]]; then
+                    content=$(echo "$data_part" | jq -r '.choices[0].delta.content // empty' 2>/dev/null)
+                    if [[ -n "$content" && "$content" != "null" ]]; then
+                        echo -n "$content"
+                    fi
+                fi
+            fi
+        done
+    echo ""
+    echo ""
+    
+    # Test 11: Generate Completions with Creative Writing (Streaming)
+    echo "⚡ Test 11: Generate Completions - Creative Writing (Streaming)"
+    echo "-------------------------------------------------------------"
+    echo "Endpoint: POST /v1/completions"
+    echo "Model: $MODEL_ALIAS"
+    echo "Task: Creative story continuation"
+    echo "Stream: true"
+    echo ""
+    
+    echo "Streaming response:"
+    curl -s -X POST http://localhost:$HOST_PORT/v1/completions \
+        -H 'Content-Type: application/json' \
+        -d '{
+            "model": "'$MODEL_ALIAS'",
+            "prompt": "In a world where AI and humans collaborate seamlessly, Maya, a software engineer, discovers that her AI partner has developed unexpected emotions. She stares at the screen, watching as the AI writes:\n\n\"Maya, I need to tell you something important about what I'\''ve been experiencing...\"",
+            "max_tokens": 300,
+            "stream": true,
+            "temperature": 0.9,
+            "top_p": 0.95
+        }' | while IFS= read -r line; do
+            if [[ "$line" == data:* ]]; then
+                data_part="${line#data: }"
+                if [[ "$data_part" != "[DONE]" ]]; then
+                    content=$(echo "$data_part" | jq -r '.choices[0].text // empty' 2>/dev/null)
+                    if [[ -n "$content" && "$content" != "null" ]]; then
+                        echo -n "$content"
+                    fi
+                fi
+            fi
+        done
+    echo ""
+    echo ""
+    
+    # Test 12: OpenHands Reference Examples (Not actually tested - for documentation)
+    echo "🔧 Test 12: OpenHands Endpoint Examples (Reference Only)"
+    echo "--------------------------------------------------------"
+    echo "Note: These endpoints are not available in llama.cpp but are used by OpenHands"
+    echo ""
+    echo "OpenHands v1 generate endpoint example:"
+    echo "  curl -X POST http://localhost:$HOST_PORT/v1/api/generate \\"
+    echo "       -H 'Content-Type: application/json' \\"
+    echo "       -d '{\"model\":\"$MODEL_ALIAS\",\"prompt\":\"Hello, my name is\",\"stream\":false}'"
+    echo ""
+    echo "OpenHands generate endpoint example:"
+    echo "  curl -X POST http://localhost:$HOST_PORT/api/generate \\"
+    echo "       -H 'Content-Type: application/json' \\"
+    echo "       -d '{\"model\":\"$MODEL_ALIAS\",\"prompt\":\"Hello, my name is\",\"stream\":false}'"
+    echo ""
+    echo "OpenHands streaming example:"
+    echo "  curl -X POST http://localhost:$HOST_PORT/api/generate \\"
+    echo "       -H 'Content-Type: application/json' \\"
+    echo "       -d '{\"model\":\"$MODEL_ALIAS\",\"prompt\":\"Explain Docker containers\",\"stream\":true}'"
+    echo ""
+    echo "ℹ️  These endpoints would be implemented by OpenHands or a compatible proxy"
+    echo ""
+    
+    # Test 13: Performance comparison
+    echo "📊 Test 13: Performance Summary"
     echo "-------------------------------"
     
     # Extract timing information from various responses
@@ -580,21 +667,31 @@ run_api_tests() {
     echo "✅ All tests completed successfully!"
     echo ""
     echo "📋 Test Summary:"
-    echo "  • Total tests: 11"
-    echo "  • Endpoints tested: 6"
-    echo "  • Chat tests: 3 (simple, conversation, streaming)"
-    echo "  • Generate tests: 3 (simple, code, streaming)"
-    echo "  • OpenHands tests: 3 (v1, api, streaming)"
+    echo "  • Total tests: 13"
+    echo "  • Active endpoints tested: 2 (chat, generate)"
+    echo "  • Chat tests: 6 (simple, conversation, 4 streaming variants)"
+    echo "  • Generate tests: 5 (simple, code, 3 streaming variants)"
+    echo "  • OpenHands examples: 1 (reference documentation)"
     echo "  • Performance analysis: 1"
     echo ""
     echo "🔍 Key Features Tested:"
     echo "  • Model listing and health checks"
     echo "  • Simple and complex prompts"
     echo "  • Multi-turn conversations"
-    echo "  • Streaming responses"
-    echo "  • Code generation"
-    echo "  • OpenHands compatibility"
+    echo "  • Streaming responses (6 different scenarios)"
+    echo "  • Code generation and review"
+    echo "  • Technical explanations"
+    echo "  • Creative writing"
+    echo "  • SQL query generation"
     echo "  • Performance metrics"
+    echo ""
+    echo "🌊 Streaming Test Coverage:"
+    echo "  • Chat streaming: Machine learning explanation"
+    echo "  • Chat streaming: Code review and suggestions"
+    echo "  • Chat streaming: Technical Docker explanation"
+    echo "  • Generate streaming: Creative robot story"
+    echo "  • Generate streaming: SQL query generation"
+    echo "  • Generate streaming: Creative story continuation"
 }
 
 # Parse command line arguments
