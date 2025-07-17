@@ -79,10 +79,7 @@ start_containers() {
             --host 0.0.0.0 \
             --n-gpu-layers 41 \
             --ctx-size 88832 \
-            --alias devstral-2507:latest \
-            --chat-template chatml \
-            --metrics \
-            --slot-save-path /models/slots
+            --alias devstral-2507:latest
     fi
     
     # Wait for llama.cpp to be ready
