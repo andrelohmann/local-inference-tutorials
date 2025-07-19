@@ -13,7 +13,7 @@ show_usage() {
     echo "Usage: $0 [COMMAND]"
     echo ""
     echo "Commands:"
-    echo "  start     Start all services (default)"
+    echo "  start     Start all services"
     echo "  stop      Stop and remove all containers"
     echo "  restart   Restart all services"
     echo "  logs      Show container logs"
@@ -22,7 +22,6 @@ show_usage() {
     echo "  help      Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0          # Start all services (default)"
     echo "  $0 start    # Start all services"
     echo "  $0 stop     # Stop all services"
     echo "  $0 logs     # View logs from all services"
@@ -621,7 +620,7 @@ fi
 
 # Main script logic
 case "${1:-}" in
-    "start"|"")
+    "start")
         start_services
         ;;
     "stop")
@@ -639,7 +638,7 @@ case "${1:-}" in
     "health")
         show_health
         ;;
-    "help"|"-h"|"--help")
+    "help"|"-h"|"--help"|"")
         show_usage
         ;;
     *)
