@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Devstral + OpenHands Docker Compose Startup Script
-# This script handles model download and container startup
+# Simplified Devstral + OpenHands Docker Compose Startup Script
+# Based on test script learnings - streamlined for essential functionality
 
 set -e
 
@@ -17,14 +17,13 @@ else
     exit 1
 fi
 
-# Set dynamic SANDBOX_USER_ID
+# Set dynamic SANDBOX_USER_ID (learned from test scripts)
 export SANDBOX_USER_ID=$(id -u)
 echo "🔐 Setting SANDBOX_USER_ID to: ${SANDBOX_USER_ID}"
 
 echo ""
 echo "📋 Configuration Summary:"
 echo "  • CUDA Architecture: ${CUDA_DOCKER_ARCH}"
-echo "  • GPU Configuration: ${NVIDIA_VISIBLE_DEVICES}"
 echo "  • Model: ${MODEL_NAME}"
 echo "  • llama.cpp Port: ${LLAMA_ARG_PORT}"
 echo "  • OpenHands Version: ${OPENHANDS_VERSION}"
@@ -33,8 +32,6 @@ echo "  • OpenWebUI Port: ${OPENWEBUI_PORT}"
 echo "  • User ID: ${SANDBOX_USER_ID}"
 echo "  • Context Window: ${LLAMA_ARG_CTX_SIZE} tokens"
 echo "  • GPU Layers: ${LLAMA_ARG_N_GPU_LAYERS}"
-echo "  • Parallel Streams: ${LLAMA_ARG_PARALLEL}"
-echo "  • Sandbox User ID: ${SANDBOX_USER_ID}"
 echo ""
 
 # Check if Docker is running
@@ -49,55 +46,27 @@ if ! docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu24.04 nvidia-smi >
     echo "   Please install NVIDIA Container Toolkit."
 fi
 
-# Create necessary directories
+# Create necessary directories (simplified from test scripts)
 echo "📁 Creating required directories..."
-mkdir -p ~/.models workspace openhands-logs openwebui-data
+mkdir -p ~/.models workspace openhands-logs openwebui-data ~/.openhands ~/.openhands/workspace
 
-# Create OpenHands configuration directory with proper permissions
-echo "🔧 Setting up OpenHands directories..."
-mkdir -p ~/.openhands
+# Create OpenHands configuration (learned from test-openhands.sh)
+echo "🔧 Creating OpenHands configuration files..."
+cat > ~/.openhands/settings.json << EOF
+{"language":"en","agent":"CodeActAgent","max_iterations":null,"security_analyzer":null,"confirmation_mode":false,"llm_model":"openai/devstral-small-2507","llm_api_key":"DEVSTRAL","llm_base_url":"http://llama-cpp-server:11434","remote_runtime_resource_factor":1,"secrets_store":{"provider_tokens":{}},"enable_default_condenser":true,"enable_sound_notifications":false,"enable_proactive_conversation_starters":false,"user_consents_to_analytics":false,"sandbox_base_container_image":null,"sandbox_runtime_container_image":null,"mcp_config":{"sse_servers":[],"stdio_servers":[],"shttp_servers":[]},"search_api_key":"","sandbox_api_key":null,"max_budget_per_task":null,"email":null,"email_verified":null}
+EOF
 
-# Set permissions (allow failures if already correct)
-chmod 755 ~/.openhands 2>/dev/null || echo "   ℹ️  ~/.openhands permissions already set or cannot be changed"
-chmod 755 workspace 2>/dev/null || echo "   ℹ️  workspace permissions already set or cannot be changed"
-chmod 755 openhands-logs 2>/dev/null || echo "   ℹ️  openhands-logs permissions already set or cannot be changed"
-chmod 755 openwebui-data 2>/dev/null || echo "   ℹ️  openwebui-data permissions already set or cannot be changed"
+cat > ~/.openhands/config.toml << EOF
+[llm]
+model = "openai/devstral-small-2507"
+base_url = "http://llama-cpp-server:11434"
+api_key = "dummy"
+api_version = "v1"
+custom_llm_provider = "openai"
+drop_params = true
+EOF
 
-# Ensure current user owns the directories (allow failures)
-chown -R $(id -u):$(id -g) ~/.openhands 2>/dev/null || echo "   ℹ️  ~/.openhands ownership already correct or cannot be changed"
-chown -R $(id -u):$(id -g) workspace 2>/dev/null || echo "   ℹ️  workspace ownership already correct or cannot be changed"
-chown -R $(id -u):$(id -g) openhands-logs 2>/dev/null || echo "   ℹ️  openhands-logs ownership already correct or cannot be changed"
-chown -R $(id -u):$(id -g) openwebui-data 2>/dev/null || echo "   ℹ️  openwebui-data ownership already correct or cannot be changed"
-
-echo "✅ Directory permissions configured for user ID: $(id -u)"
-
-# Verify directory structure
-echo "📋 Directory structure verification:"
-echo "   • ~/.openhands: $(ls -ld ~/.openhands | awk '{print $1, $3, $4}')"
-echo "   • workspace: $(ls -ld workspace | awk '{print $1, $3, $4}')"
-echo "   • openhands-logs: $(ls -ld openhands-logs | awk '{print $1, $3, $4}')"
-echo "   • openwebui-data: $(ls -ld openwebui-data | awk '{print $1, $3, $4}')"
-
-# Test write permissions
-echo "🔍 Testing write permissions..."
-PERMISSION_OK=true
-
-if ! touch ~/.openhands/test-write 2>/dev/null; then
-    echo "   ⚠️  Warning: Cannot write to ~/.openhands directory"
-    echo "      Current permissions: $(ls -ld ~/.openhands 2>/dev/null || echo 'unknown')"
-    echo "      Try: sudo chown -R $(id -u):$(id -g) ~/.openhands"
-    PERMISSION_OK=false
-else
-    rm -f ~/.openhands/test-write
-    echo "   ✅ ~/.openhands write test passed"
-fi
-
-if ! touch workspace/test-write 2>/dev/null; then
-    echo "   ⚠️  Warning: Cannot write to workspace directory"
-    echo "      Current permissions: $(ls -ld workspace 2>/dev/null || echo 'unknown')"
-    echo "      Try: sudo chown -R $(id -u):$(id -g) workspace"
-    PERMISSION_OK=false
-else
+echo "✅ OpenHands configuration files created"
     rm -f workspace/test-write
     echo "   ✅ workspace write test passed"
 fi
@@ -109,31 +78,6 @@ else
     echo "   OpenHands may have trouble creating session files"
     echo "   Use './debug-permissions.sh' for detailed troubleshooting"
 fi
-
-# Create OpenHands configuration files (from test-openhands.sh)
-echo ""
-echo "🔧 Creating OpenHands LLM configuration files..."
-mkdir -p ~/.openhands/workspace
-
-cat > ~/.openhands/settings.json << EOF
-{"language":"en","agent":"CodeActAgent","max_iterations":null,"security_analyzer":null,"confirmation_mode":false,"llm_model":"openai/devstral-small-2507","llm_api_key":"DEVSTRAL","llm_base_url":"http://host.docker.internal:11434","remote_runtime_resource_factor":1,"secrets_store":{"provider_tokens":{}},"enable_default_condenser":true,"enable_sound_notifications":false,"enable_proactive_conversation_starters":false,"user_consents_to_analytics":false,"sandbox_base_container_image":null,"sandbox_runtime_container_image":null,"mcp_config":{"sse_servers":[],"stdio_servers":[],"shttp_servers":[]},"search_api_key":"","sandbox_api_key":null,"max_budget_per_task":null,"email":null,"email_verified":null}
-EOF
-
-cat > ~/.openhands/config.toml << EOF
-[llm]
-model = "openai/devstral-small-2507"
-base_url = "http://host.docker.internal:11434"
-api_key = "dummy"
-api_version = "v1"
-custom_llm_provider = "openai"
-drop_params = true
-EOF
-
-echo "✅ OpenHands configuration files created:"
-echo "   • ~/.openhands/settings.json (UI settings with LLM config)"
-echo "   • ~/.openhands/config.toml (LLM backend config)"
-echo "   • LLM Model: openai/devstral-small-2507"
-echo "   • LLM Base URL: http://host.docker.internal:11434"
 
 # Check if model exists
 MODEL_PATH="${MODEL_DIR}/${MODEL_NAME}"

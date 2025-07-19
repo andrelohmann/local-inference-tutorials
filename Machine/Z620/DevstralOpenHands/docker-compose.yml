@@ -5,11 +5,11 @@ services:
       dockerfile: Dockerfile
       target: server
       args:
-        CUDA_DOCKER_ARCH: ${CUDA_DOCKER_ARCH}  # Use value from .env file
+        CUDA_DOCKER_ARCH: ${CUDA_DOCKER_ARCH}
     container_name: llama-cpp-devstral
     restart: unless-stopped
     environment:
-      - LLAMA_ARG_HOST=${LLAMA_ARG_HOST}
+      - LLAMA_ARG_HOST=0.0.0.0
       - LLAMA_ARG_PORT=${LLAMA_ARG_PORT}
       - LLAMA_ARG_MODEL=${LLAMA_ARG_MODEL}
       - LLAMA_ARG_CTX_SIZE=${LLAMA_ARG_CTX_SIZE}
@@ -21,10 +21,10 @@ services:
       - LLAMA_ARG_CONT_BATCHING=${LLAMA_ARG_CONT_BATCHING}
       - LLAMA_ARG_PARALLEL=${LLAMA_ARG_PARALLEL}
       - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES}
-      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES}
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - MODEL_URL=${MODEL_URL}
       - MODEL_FILE=${MODEL_NAME}
-      - MODEL_ALIAS=${MODEL_ALIAS}
+      - MODEL_ALIAS=devstral-small-2507
     ports:
       - "${LLAMA_ARG_PORT}:${LLAMA_ARG_PORT}"
     volumes:
@@ -34,41 +34,28 @@ services:
     runtime: nvidia
     healthcheck:
       test: ["CMD", "/app/health-check.sh"]
-      interval: ${HEALTHCHECK_INTERVAL:-30s}
-      timeout: ${HEALTHCHECK_TIMEOUT:-10s}
-      retries: ${HEALTHCHECK_RETRIES:-10}
-      start_period: ${HEALTHCHECK_START_PERIOD:-60s}  # Start checking after 1 minute
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
 
   openhands:
-    image: docker.all-hands.dev/all-hands-ai/openhands:${OPENHANDS_VERSION}
-    container_name: openhands
+    image: ${OPENHANDS_IMAGE}
+    container_name: ${OPENHANDS_CONTAINER_NAME}
     restart: unless-stopped
     environment:
-      - SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:${OPENHANDS_RUNTIME_VERSION}
-      - SANDBOX_USER_ID=${SANDBOX_USER_ID}
-      - SANDBOX_VOLUMES=${SANDBOX_VOLUMES}
+      - SANDBOX_RUNTIME_CONTAINER_IMAGE=${OPENHANDS_RUNTIME_IMAGE}
       - LOG_ALL_EVENTS=${OPENHANDS_LOG_ALL_EVENTS}
-      #- RUNTIME=docker
-      - LLM_MODEL=openai/devstral-2507
-      - LLM_BASE_URL=http://llama-cpp-server:11434
-      - LLM_API_KEY=dummy
-      #- LLM_MODEL=${OPENHANDS_LLM_MODEL}
-      #- LLM_BASE_URL=${OPENHANDS_LLM_BASE_URL}
-      #- LLM_API_KEY=dummy
-      #- LLM_EMBEDDING_MODEL=local
-      #- LLM_EMBEDDING_BASE_URL=${OPENHANDS_LLM_BASE_URL}
-      - LLM_API_VERSION=${LLM_API_VERSION}
-      #- LLM_CUSTOM_LLM_PROVIDER=${LLM_CUSTOM_LLM_PROVIDER}
-      - LLM_DROP_PARAMS=${LLM_DROP_PARAMS}
-      #- DEFAULT_LLM_CONFIG={"model":"${OPENHANDS_LLM_MODEL}","base_url":"${OPENHANDS_LLM_BASE_URL}","api_key":"dummy","api_version":"${LLM_API_VERSION}","custom_llm_provider":"${LLM_CUSTOM_LLM_PROVIDER}","drop_params":${LLM_DROP_PARAMS}}
-      #- DEFAULT_EMBEDDING_CONFIG={"model":"local","base_url":"${OPENHANDS_LLM_BASE_URL}","api_key":"dummy"}
+      - WORKSPACE_BASE=${OPENHANDS_WORKSPACE_BASE}
+      - SANDBOX_USER_ID=${SANDBOX_USER_ID}
+      - SANDBOX_TIMEOUT=${OPENHANDS_SANDBOX_TIMEOUT}
+      - RUNTIME=${OPENHANDS_RUNTIME}
     ports:
       - "${OPENHANDS_PORT}:3000"
     volumes:
-      - ./openhands-logs:/logs
-      - ./workspace:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
       - ~/.openhands:/.openhands
+      - ~/.openhands/workspace:/workspace
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -78,22 +65,26 @@ services:
       - devstral-network
 
   openwebui:
-    #image: ghcr.io/open-webui/open-webui:${OPENWEBUI_VERSION}
     image: ghcr.io/open-webui/open-webui:latest
     container_name: openwebui
     restart: unless-stopped
     environment:
-      - OLLAMA_BASE_URL=${OPENWEBUI_OLLAMA_BASE_URL}
-      - WEBUI_AUTH=false
-      - WEBUI_NAME=Devstral WebUI
-      - WEBUI_URL=http://localhost:${OPENWEBUI_PORT}
-      - ENABLE_SIGNUP=true
-      - DEFAULT_MODELS=${OPENWEBUI_DEFAULT_MODEL}
-      - DEFAULT_USER_ROLE=admin
+      - PUID=${SANDBOX_USER_ID}
+      - PGID=${SANDBOX_USER_ID}
+      - WEBUI_AUTH=${OPENWEBUI_WEBUI_AUTH}
+      - ENABLE_OLLAMA_API=${OPENWEBUI_ENABLE_OLLAMA_API}
+      - ENABLE_OPENAI_API=${OPENWEBUI_ENABLE_OPENAI_API}
+      - OPENAI_API_BASE_URL=${OPENWEBUI_OPENAI_API_BASE_URL}
+      - OPENAI_API_KEY=${OPENWEBUI_OPENAI_API_KEY}
+      - WEBUI_NAME=${OPENWEBUI_WEBUI_NAME}
+      - DEFAULT_MODELS=${OPENWEBUI_DEFAULT_MODELS}
+      - DEFAULT_USER_ROLE=${OPENWEBUI_DEFAULT_USER_ROLE}
     ports:
       - "${OPENWEBUI_PORT}:8080"
     volumes:
-      - ./openwebui-data:/app/backend/data
+      - ~/.openwebui:/app/backend/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       llama-cpp-server:
         condition: service_healthy
