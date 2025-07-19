@@ -5,17 +5,19 @@
 echo "🔍 System Configuration Check"
 echo "============================="
 
-# Load environment variables from .env file
+# Load environment variables from .env file and set SANDBOX_USER_ID
 if [ -f .env ]; then
     source .env
+    export SANDBOX_USER_ID=$(id -u)
     echo "✅ Environment variables loaded from .env"
+    echo "🔐 SANDBOX_USER_ID set to: ${SANDBOX_USER_ID}"
 else
     echo "❌ Error: .env file not found"
     exit 1
 fi
 
-# Build CUDA container image name from .env variables
-CUDA_IMAGE="nvidia/cuda:${CUDA_VERSION}-base-ubuntu${UBUNTU_VERSION}"
+# Define Docker image (using a known working version since CUDA_VERSION is not in .env)
+CUDA_IMAGE="nvidia/cuda:12.6.0-base-ubuntu24.04"
 
 # Check NVIDIA runtime
 echo "1. NVIDIA Runtime Test:"
@@ -24,6 +26,13 @@ if docker run --rm --runtime=nvidia "${CUDA_IMAGE}" nvidia-smi > /dev/null 2>&1;
     echo "   ✅ NVIDIA runtime working"
 else
     echo "   ❌ NVIDIA runtime not available"
+    echo "   💡 Try using --gpus all instead of --runtime=nvidia"
+    # Test with --gpus all as fallback
+    if docker run --rm --gpus all "${CUDA_IMAGE}" nvidia-smi > /dev/null 2>&1; then
+        echo "   ✅ GPU access works with --gpus all flag"
+    else
+        echo "   ❌ GPU access failed with both --runtime=nvidia and --gpus all"
+    fi
 fi
 
 # Check GPU visibility
@@ -40,17 +49,16 @@ fi
 
 # Check GPU configuration
 echo "3. GPU Configuration:"
-echo "   CUDA_VERSION: ${CUDA_VERSION}"
-echo "   UBUNTU_VERSION: ${UBUNTU_VERSION}"
+echo "   CUDA Docker Image: ${CUDA_IMAGE}"
 echo "   CUDA_DOCKER_ARCH: ${CUDA_DOCKER_ARCH}"
 echo "   NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES}"
-echo "   NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES}"
+echo "   NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}"
 echo "   LLAMA_ARG_N_GPU_LAYERS: ${LLAMA_ARG_N_GPU_LAYERS}"
 
 # Check user ID
 echo "4. User Configuration:"
 echo "   Current User ID: $(id -u)"
-echo "   SANDBOX_USER_ID: ${SANDBOX_USER_ID:-will be set dynamically}"
+echo "   SANDBOX_USER_ID: ${SANDBOX_USER_ID}"
 if [ -z "${SANDBOX_USER_ID}" ]; then
     echo "   ⚠️  SANDBOX_USER_ID not set - use start.sh script or set in .env"
 elif [ "${SANDBOX_USER_ID}" != "$(id -u)" ]; then
@@ -91,11 +99,29 @@ fi
 
 # Check OpenHands configuration
 echo "6. OpenHands Configuration:"
+echo "   OPENHANDS_IMAGE: ${OPENHANDS_IMAGE}"
 echo "   OPENHANDS_VERSION: ${OPENHANDS_VERSION}"
+echo "   OPENHANDS_RUNTIME_IMAGE: ${OPENHANDS_RUNTIME_IMAGE}"
 echo "   OPENHANDS_RUNTIME_VERSION: ${OPENHANDS_RUNTIME_VERSION}"
 echo "   OPENHANDS_PORT: ${OPENHANDS_PORT}"
-echo "   OPENHANDS_LLM_MODEL: ${OPENHANDS_LLM_MODEL}"
-echo "   OPENHANDS_LLM_BASE_URL: ${OPENHANDS_LLM_BASE_URL}"
+echo "   OPENHANDS_CONTAINER_NAME: ${OPENHANDS_CONTAINER_NAME}"
+
+# Check if OpenHands configuration files exist
+if [ -f ~/.openhands/settings.json ]; then
+    echo "   ✅ OpenHands settings.json exists"
+    LLM_MODEL=$(jq -r '.llm_model // empty' ~/.openhands/settings.json 2>/dev/null || echo "")
+    LLM_BASE_URL=$(jq -r '.llm_base_url // empty' ~/.openhands/settings.json 2>/dev/null || echo "")
+    echo "   LLM Model (from settings.json): ${LLM_MODEL}"
+    echo "   LLM Base URL (from settings.json): ${LLM_BASE_URL}"
+else
+    echo "   ⚠️  OpenHands settings.json not found (will be created by start.sh)"
+fi
+
+if [ -f ~/.openhands/config.toml ]; then
+    echo "   ✅ OpenHands config.toml exists"
+else
+    echo "   ⚠️  OpenHands config.toml not found (will be created by start.sh)"
+fi
 
 # Check llama.cpp performance settings
 echo "7. llama.cpp Performance Configuration:"
@@ -118,27 +144,25 @@ if [ "${NVIDIA_VISIBLE_DEVICES}" = "none" ]; then
 else
     echo "   Testing GPU access with NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES}"
     echo "   Using image: ${CUDA_IMAGE}"
-    if docker run --rm --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES="${NVIDIA_VISIBLE_DEVICES}" "${CUDA_IMAGE}" nvidia-smi -L > /dev/null 2>&1; then
-        echo "   ✅ GPU access working with current configuration"
+    
+    # Try --gpus all first (more modern approach)
+    if docker run --rm --gpus all -e NVIDIA_VISIBLE_DEVICES="${NVIDIA_VISIBLE_DEVICES}" "${CUDA_IMAGE}" nvidia-smi -L > /dev/null 2>&1; then
+        echo "   ✅ GPU access working with --gpus all flag"
+        docker run --rm --gpus all -e NVIDIA_VISIBLE_DEVICES="${NVIDIA_VISIBLE_DEVICES}" "${CUDA_IMAGE}" nvidia-smi -L | sed 's/^/     /'
+    # Fallback to --runtime=nvidia
+    elif docker run --rm --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES="${NVIDIA_VISIBLE_DEVICES}" "${CUDA_IMAGE}" nvidia-smi -L > /dev/null 2>&1; then
+        echo "   ✅ GPU access working with --runtime=nvidia"
         docker run --rm --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES="${NVIDIA_VISIBLE_DEVICES}" "${CUDA_IMAGE}" nvidia-smi -L | sed 's/^/     /'
     else
         echo "   ❌ GPU access failed with current configuration"
+        echo "   💡 Check NVIDIA Container Toolkit installation"
+        echo "   💡 Verify Docker daemon configuration includes nvidia runtime"
     fi
 fi
 
 # Configuration validation
 echo "10. Configuration Validation:"
 validation_errors=0
-
-# Check if CUDA versions are compatible
-if [ "${CUDA_VERSION}" != "12.6.0" ] && [ "${CUDA_VERSION}" != "12.5.0" ] && [ "${CUDA_VERSION}" != "12.4.0" ]; then
-    echo "   ⚠️  CUDA version ${CUDA_VERSION} may not be fully tested"
-fi
-
-# Check if Ubuntu version is supported
-if [ "${UBUNTU_VERSION}" != "24.04" ] && [ "${UBUNTU_VERSION}" != "22.04" ]; then
-    echo "   ⚠️  Ubuntu version ${UBUNTU_VERSION} may not be fully tested"
-fi
 
 # Check CUDA architecture
 case "${CUDA_DOCKER_ARCH}" in
