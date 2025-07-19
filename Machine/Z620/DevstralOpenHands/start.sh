@@ -43,22 +43,26 @@ show_usage() {
     exit 0
 }
 
+# Load environment variables for all commands
+load_env_vars() {
+    if [ -f .env ]; then
+        source .env
+        # Set dynamic SANDBOX_USER_ID for all commands
+        export SANDBOX_USER_ID=$(id -u)
+    else
+        echo "❌ Error: .env file not found"
+        exit 1
+    fi
+}
+
 # Function to start all services
 start_services() {
 echo "🚀 Starting Devstral + OpenHands Setup..."
 echo "=================================================="
 
 # Load environment variables
-if [ -f .env ]; then
-    source .env
-    echo "✅ Environment variables loaded"
-else
-    echo "❌ Error: .env file not found"
-    exit 1
-fi
-
-# Set dynamic SANDBOX_USER_ID
-export SANDBOX_USER_ID=$(id -u)
+load_env_vars
+echo "✅ Environment variables loaded"
 echo "🔐 Setting SANDBOX_USER_ID to: ${SANDBOX_USER_ID}"
 
 echo ""
@@ -349,9 +353,7 @@ stop_services() {
     echo "========================================="
     
     # Load environment variables for container names
-    if [ -f .env ]; then
-        source .env
-    fi
+    load_env_vars
     
     echo "🔄 Stopping Docker Compose services..."
     if docker compose ps -q | grep -q .; then
@@ -401,9 +403,7 @@ show_status() {
     echo "================="
     
     # Load environment variables
-    if [ -f .env ]; then
-        source .env
-    fi
+    load_env_vars
     
     # Check if any containers are running
     if ! docker compose ps -q | grep -q .; then
@@ -471,9 +471,7 @@ show_health() {
     echo "========================"
     
     # Load environment variables
-    if [ -f .env ]; then
-        source .env
-    fi
+    load_env_vars
     
     # Check if any containers are running
     if ! docker compose ps -q | grep -q .; then
@@ -614,9 +612,7 @@ restart_services() {
 }
 
 # Load environment variables for usage display
-if [ -f .env ]; then
-    source .env
-fi
+load_env_vars
 
 # Main script logic
 case "${1:-}" in
