@@ -1,10 +1,51 @@
 #!/bin/bash
 
-# Devstral + OpenHands Docker Compose Startup Script
-# This script handles model download and container startup
+# Devstral + OpenHands Docker Compose Management Script
+# This script handles model download, container startup, and management
 
 set -e
 
+# Function to show usage
+show_usage() {
+    echo "🚀 Devstral + OpenHands Management Script"
+    echo "=========================================="
+    echo ""
+    echo "Usage: $0 [COMMAND]"
+    echo ""
+    echo "Commands:"
+    echo "  start     Start all services (default)"
+    echo "  stop      Stop and remove all containers"
+    echo "  restart   Restart all services"
+    echo "  logs      Show container logs"
+    echo "  status    Show container status"
+    echo "  health    Show detailed health status"
+    echo "  help      Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0          # Start all services (default)"
+    echo "  $0 start    # Start all services"
+    echo "  $0 stop     # Stop all services"
+    echo "  $0 logs     # View logs from all services"
+    echo "  $0 status   # Check status of all services"
+    echo "  $0 health   # Detailed health check"
+    echo ""
+    echo "Configuration:"
+    echo "  • llama.cpp Server: Port ${LLAMA_ARG_PORT:-11434}"
+    echo "  • OpenHands: Port ${OPENHANDS_PORT:-3000}"
+    echo "  • OpenWebUI: Port ${OPENWEBUI_PORT:-8080}"
+    echo "  • Model: ${MODEL_NAME:-devstral-q4_k_m.gguf}"
+    echo "  • CUDA Architecture: ${CUDA_DOCKER_ARCH:-61}"
+    echo ""
+    echo "Web Interfaces:"
+    echo "  • OpenHands: http://localhost:${OPENHANDS_PORT:-3000}"
+    echo "  • OpenWebUI: http://localhost:${OPENWEBUI_PORT:-8080}"
+    echo "  • llama.cpp API: http://localhost:${LLAMA_ARG_PORT:-11434}"
+    echo ""
+    exit 0
+}
+
+# Function to start all services
+start_services() {
 echo "🚀 Starting Devstral + OpenHands Setup..."
 echo "=================================================="
 
@@ -300,4 +341,310 @@ echo "   • OpenHands data: ~/.openhands (host) -> /.openhands (container)"
 echo "   • OpenWebUI data: ./openwebui-data (host) -> /app/backend/data (container)"
 echo "   • Workspace: ./workspace (host) -> /workspace (container)"
 echo ""
-echo "🛑 To stop: docker compose down"
+echo "🛑 To stop: ./start.sh stop"
+}
+
+# Function to stop all services
+stop_services() {
+    echo "🛑 Stopping Devstral + OpenHands Services"
+    echo "========================================="
+    
+    # Load environment variables for container names
+    if [ -f .env ]; then
+        source .env
+    fi
+    
+    echo "🔄 Stopping Docker Compose services..."
+    if docker compose ps -q | grep -q .; then
+        docker compose down
+        echo "✅ All services stopped"
+    else
+        echo "ℹ️  No services were running"
+    fi
+    
+    echo ""
+    echo "📊 Final Status:"
+    echo "  • llama.cpp server: Stopped"
+    echo "  • OpenHands: Stopped"  
+    echo "  • OpenWebUI: Stopped"
+    echo ""
+    echo "📁 Data preserved:"
+    echo "  • Model: ~/.models/${MODEL_NAME:-devstral-q4_k_m.gguf}"
+    echo "  • OpenHands config: ~/.openhands/"
+    echo "  • OpenWebUI data: ~/.openwebui/"
+    echo "  • Workspace: ./workspace/"
+    echo ""
+    echo "🚀 To restart: ./start.sh start"
+}
+
+# Function to show container logs
+show_logs() {
+    echo "📋 Container Logs"
+    echo "================="
+    
+    if ! docker compose ps -q | grep -q .; then
+        echo "❌ No containers are running"
+        echo "💡 Run './start.sh start' to start services"
+        exit 1
+    fi
+    
+    echo "🔍 Showing logs from all services..."
+    echo "📝 Use Ctrl+C to exit log viewing"
+    echo ""
+    
+    # Show logs with timestamps and follow
+    docker compose logs --timestamps --follow
+}
+
+# Function to show container status
+show_status() {
+    echo "📊 Service Status"
+    echo "================="
+    
+    # Load environment variables
+    if [ -f .env ]; then
+        source .env
+    fi
+    
+    # Check if any containers are running
+    if ! docker compose ps -q | grep -q .; then
+        echo "❌ No services are running"
+        echo "💡 Run './start.sh start' to start services"
+        echo ""
+        echo "📋 Available Services:"
+        echo "  • llama.cpp-server (Port: ${LLAMA_ARG_PORT:-11434})"
+        echo "  • openhands (Port: ${OPENHANDS_PORT:-3000})"
+        echo "  • openwebui (Port: ${OPENWEBUI_PORT:-8080})"
+        return
+    fi
+    
+    echo "🔍 Docker Compose Services:"
+    docker compose ps
+    echo ""
+    
+    # Check individual service status
+    echo "🔍 Service Health Status:"
+    echo "------------------------"
+    
+    # Check llama.cpp server
+    if docker compose ps --services --filter "status=running" | grep -q "llama-cpp-server"; then
+        if curl -s http://localhost:${LLAMA_ARG_PORT:-11434}/health >/dev/null 2>&1; then
+            echo "✅ llama.cpp server: Running and healthy"
+        else
+            echo "⚠️  llama.cpp server: Running but not responding"
+        fi
+    else
+        echo "❌ llama.cpp server: Not running"
+    fi
+    
+    # Check OpenHands
+    if docker compose ps --services --filter "status=running" | grep -q "openhands"; then
+        if curl -s http://localhost:${OPENHANDS_PORT:-3000} >/dev/null 2>&1; then
+            echo "✅ OpenHands: Running and accessible"
+        else
+            echo "⚠️  OpenHands: Running but not responding"
+        fi
+    else
+        echo "❌ OpenHands: Not running"
+    fi
+    
+    # Check OpenWebUI
+    if docker compose ps --services --filter "status=running" | grep -q "openwebui"; then
+        if curl -s http://localhost:${OPENWEBUI_PORT:-8080} >/dev/null 2>&1; then
+            echo "✅ OpenWebUI: Running and accessible"
+        else
+            echo "⚠️  OpenWebUI: Running but not responding"
+        fi
+    else
+        echo "❌ OpenWebUI: Not running"
+    fi
+    
+    echo ""
+    echo "🌐 Access URLs:"
+    echo "  • OpenHands: http://localhost:${OPENHANDS_PORT:-3000}"
+    echo "  • OpenWebUI: http://localhost:${OPENWEBUI_PORT:-8080}"
+    echo "  • llama.cpp API: http://localhost:${LLAMA_ARG_PORT:-11434}"
+}
+
+# Function to show detailed health status
+show_health() {
+    echo "🏥 Detailed Health Check"
+    echo "========================"
+    
+    # Load environment variables
+    if [ -f .env ]; then
+        source .env
+    fi
+    
+    # Check if any containers are running
+    if ! docker compose ps -q | grep -q .; then
+        echo "❌ No services are running"
+        echo "💡 Run './start.sh start' to start services"
+        return
+    fi
+    
+    echo "🔍 Container Health Details:"
+    echo ""
+    
+    # Detailed llama.cpp check
+    echo "🔍 llama.cpp Server Health:"
+    echo "---------------------------"
+    if docker compose ps --services --filter "status=running" | grep -q "llama-cpp-server"; then
+        CONTAINER_STATUS=$(docker inspect --format='{{.State.Health.Status}}' llama-cpp-devstral 2>/dev/null || echo "no-healthcheck")
+        echo "  • Container Status: Running"
+        echo "  • Health Status: $CONTAINER_STATUS"
+        
+        # Test API endpoints
+        echo "  • Testing /health endpoint..."
+        if curl -s http://localhost:${LLAMA_ARG_PORT:-11434}/health; then
+            echo "    ✅ Health endpoint responding"
+        else
+            echo "    ❌ Health endpoint not responding"
+        fi
+        
+        echo "  • Testing /v1/models endpoint..."
+        if curl -s http://localhost:${LLAMA_ARG_PORT:-11434}/v1/models >/dev/null 2>&1; then
+            echo "    ✅ Models endpoint responding"
+            MODEL_COUNT=$(curl -s http://localhost:${LLAMA_ARG_PORT:-11434}/v1/models | jq -r '.data | length' 2>/dev/null || echo "unknown")
+            echo "    📊 Available models: $MODEL_COUNT"
+        else
+            echo "    ❌ Models endpoint not responding"
+        fi
+    else
+        echo "  ❌ Container not running"
+    fi
+    echo ""
+    
+    # Detailed OpenHands check
+    echo "🔍 OpenHands Health:"
+    echo "-------------------"
+    if docker compose ps --services --filter "status=running" | grep -q "openhands"; then
+        echo "  • Container Status: Running"
+        echo "  • Testing web interface..."
+        
+        HTTP_STATUS=$(curl -s -w "%{http_code}" -o /dev/null http://localhost:${OPENHANDS_PORT:-3000} 2>/dev/null || echo "000")
+        if [ "$HTTP_STATUS" = "200" ]; then
+            echo "    ✅ Web interface responding (HTTP $HTTP_STATUS)"
+        else
+            echo "    ⚠️  Web interface status: HTTP $HTTP_STATUS"
+        fi
+        
+        # Check configuration files
+        if [ -f ~/.openhands/settings.json ]; then
+            echo "    ✅ Settings configuration exists"
+        else
+            echo "    ❌ Settings configuration missing"
+        fi
+        
+        if [ -f ~/.openhands/config.toml ]; then
+            echo "    ✅ LLM configuration exists"
+        else
+            echo "    ❌ LLM configuration missing"
+        fi
+    else
+        echo "  ❌ Container not running"
+    fi
+    echo ""
+    
+    # Detailed OpenWebUI check
+    echo "🔍 OpenWebUI Health:"
+    echo "-------------------"
+    if docker compose ps --services --filter "status=running" | grep -q "openwebui"; then
+        echo "  • Container Status: Running"
+        echo "  • Testing web interface..."
+        
+        HTTP_STATUS=$(curl -s -w "%{http_code}" -o /dev/null http://localhost:${OPENWEBUI_PORT:-8080} 2>/dev/null || echo "000")
+        if [ "$HTTP_STATUS" = "200" ]; then
+            echo "    ✅ Web interface responding (HTTP $HTTP_STATUS)"
+        else
+            echo "    ⚠️  Web interface status: HTTP $HTTP_STATUS"
+        fi
+        
+        # Check data directory
+        if [ -d ~/.openwebui ]; then
+            DATA_SIZE=$(du -sh ~/.openwebui 2>/dev/null | cut -f1)
+            echo "    📁 Data directory size: $DATA_SIZE"
+        else
+            echo "    ❌ Data directory not found"
+        fi
+    else
+        echo "  ❌ Container not running"
+    fi
+    echo ""
+    
+    # Resource usage
+    echo "🔍 Resource Usage:"
+    echo "------------------"
+    if docker compose ps -q | grep -q .; then
+        docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
+    else
+        echo "  ℹ️  No containers running"
+    fi
+    echo ""
+    
+    echo "📊 System Status Summary:"
+    echo "========================"
+    RUNNING_SERVICES=$(docker compose ps --services --filter "status=running" | wc -l)
+    TOTAL_SERVICES=3
+    echo "  • Services Running: $RUNNING_SERVICES/$TOTAL_SERVICES"
+    
+    if [ "$RUNNING_SERVICES" -eq "$TOTAL_SERVICES" ]; then
+        echo "  • Overall Status: ✅ All systems operational"
+    elif [ "$RUNNING_SERVICES" -gt 0 ]; then
+        echo "  • Overall Status: ⚠️  Partial deployment"
+    else
+        echo "  • Overall Status: ❌ No services running"
+    fi
+}
+
+# Function to restart all services
+restart_services() {
+    echo "🔄 Restarting Devstral + OpenHands Services"
+    echo "==========================================="
+    
+    echo "🛑 Stopping services..."
+    stop_services
+    
+    echo ""
+    echo "⏳ Waiting 5 seconds before restart..."
+    sleep 5
+    
+    echo ""
+    echo "🚀 Starting services..."
+    start_services
+}
+
+# Load environment variables for usage display
+if [ -f .env ]; then
+    source .env
+fi
+
+# Main script logic
+case "${1:-}" in
+    "start"|"")
+        start_services
+        ;;
+    "stop")
+        stop_services
+        ;;
+    "restart")
+        restart_services
+        ;;
+    "logs")
+        show_logs
+        ;;
+    "status")
+        show_status
+        ;;
+    "health")
+        show_health
+        ;;
+    "help"|"-h"|"--help")
+        show_usage
+        ;;
+    *)
+        echo "❌ Unknown command: $1"
+        echo ""
+        show_usage
+        ;;
+esac
