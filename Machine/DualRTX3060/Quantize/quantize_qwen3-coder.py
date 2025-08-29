@@ -18,7 +18,7 @@ print(f"Lade Modell: {MODEL_ID} mit CPU-Offloading...")
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     torch_dtype="auto",
-    device_map="auto",
+    device_map="auto", # CPU-Offloading aktivieren
     trust_remote_code=True
 )
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
